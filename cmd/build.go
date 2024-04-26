@@ -3,9 +3,6 @@ package cmd
 import (
 	"dockem/utils"
 	"fmt"
-	"os"
-	"path/filepath"
-
 	"github.com/spf13/cobra"
 )
 

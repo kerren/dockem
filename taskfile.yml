@@ -1,0 +1,12 @@
+version: '3'
+
+tasks:
+  test:
+    desc: "Run the test for all packages and subpackages"
+    cmds:
+      - go test ./...
+
+  test-verbose:
+    desc: "Run the test for all packages and subpackages with verbose output"
+    cmds:
+      - go test -v ./...
