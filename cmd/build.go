@@ -3,7 +3,6 @@ package cmd
 import (
 	"dockem/utils"
 	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -54,6 +53,8 @@ otherwise, build the new image and push it to the specified tag(s).`,
 			WatchDirectory:   watchDirectory,
 			WatchFile:        watchFile,
 		}
+
+		utils.BuildDockerImage(buildDockerImageParams)
 	},
 }
 
