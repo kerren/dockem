@@ -54,6 +54,7 @@ otherwise, build the new image and push it to the specified tag(s).`,
 			WatchFile:        watchFile,
 		}
 
+		// Finally, we push this off to the build docker image function
 		utils.BuildDockerImage(buildDockerImageParams)
 	},
 }
