@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dockem/utils"
-	"fmt"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +12,6 @@ var buildCmd = &cobra.Command{
 been built. If it has been built, then skip the build and copy the tag,
 otherwise, build the new image and push it to the specified tag(s).`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("build called")
 		// First we need to check that the required flags are set.
 		// 1. Ensure that the directory flag is set and the directory exists
 		directory, _ := cmd.Flags().GetString("directory")
