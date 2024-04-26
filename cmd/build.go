@@ -22,8 +22,9 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		// 2. Ensure that the dockerfile-path flag is set and the file exists
 		dockerfilePath, _ := cmd.Flags().GetString("dockerfile-path")
 		utils.AssertFileExists(dockerfilePath, "ERROR: The file '%s' does not exist. Please specify the path to the Dockerfile you would like to use to build the image.")
-
 		// 3. Ensure that the image-name flag is set
+		imageName = cmd.Flags().GetString("image-name")
+
 		// 4. Ensure that the version-file flag is set and the file exists
 	},
 }

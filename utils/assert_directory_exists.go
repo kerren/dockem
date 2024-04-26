@@ -6,15 +6,15 @@ import (
 	"path/filepath"
 )
 
-func AssertDirectoryExists(path string, error_message string) {
+func AssertDirectoryExists(path string, errorMessage string) {
 
-	if error_message == "" {
-		error_message = "ERROR: The directory '%s' does not exist."
+	if errorMessage == "" {
+		errorMessage = "ERROR: The directory '%s' does not exist."
 	}
-	abs_directory, _ := filepath.Abs(path)
-	if exists, _ := DirectoryExists(abs_directory); !exists {
-		error_message := fmt.Sprintf(error_message, abs_directory)
-		fmt.Println(error_message)
+	absDirectory, _ := filepath.Abs(path)
+	if exists, _ := DirectoryExists(absDirectory); !exists {
+		outputMessage := fmt.Sprintf(errorMessage, absDirectory)
+		fmt.Println(outputMessage)
 		os.Exit(1)
 	}
 }
