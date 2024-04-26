@@ -28,6 +28,32 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		// 4. Ensure that the version-file flag is set and the file exists
 		versionFile, _ := cmd.Flags().GetString("version-file")
 		utils.AssertFileExists(versionFile, "ERROR: The file '%s' does not exist. Please specify the path to the file that holds the version you would like to use in the build. This is a JSON file that must have the 'version' key.")
+
+		// Now we can collect the optional flags
+		dockerBuildFlags, _ := cmd.Flags().GetStringArray("docker-build-flags")
+		dockerPassword, _ := cmd.Flags().GetString("docker-password")
+		dockerUsername, _ := cmd.Flags().GetString("docker-username")
+		latest, _ := cmd.Flags().GetBool("latest")
+		registry, _ := cmd.Flags().GetString("registry")
+		tag, _ := cmd.Flags().GetStringArray("tag")
+		watchDirectory, _ := cmd.Flags().GetStringArray("watch-directory")
+		watchFile, _ := cmd.Flags().GetStringArray("watch-file")
+
+		// Now we can create the build docker image params struct
+		buildDockerImageParams := utils.BuildDockerImageParams{
+			Directory:        directory,
+			DockerfilePath:   dockerfilePath,
+			ImageName:        imageName,
+			VersionFile:      versionFile,
+			DockerBuildFlags: dockerBuildFlags,
+			DockerPassword:   dockerPassword,
+			DockerUsername:   dockerUsername,
+			Latest:           latest,
+			Registry:         registry,
+			Tag:              tag,
+			WatchDirectory:   watchDirectory,
+			WatchFile:        watchFile,
+		}
 	},
 }
 
