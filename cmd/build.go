@@ -26,6 +26,8 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		imageName, _ := cmd.Flags().GetString("image-name")
 		utils.AssertStringNotEmpty(imageName, "image-name", "ERROR: The image-name flag is required. Please specify the name of the image you would like to build, this usually includes the organisation or group as well eg. your-org/image-name.")
 		// 4. Ensure that the version-file flag is set and the file exists
+		versionFile, _ := cmd.Flags().GetString("version-file")
+		utils.AssertFileExists(versionFile, "ERROR: The file '%s' does not exist. Please specify the path to the file that holds the version you would like to use in the build. This is a JSON file that must have the 'version' key.")
 	},
 }
 
