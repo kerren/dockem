@@ -1,6 +1,6 @@
 package main
 
-import "kerren/dockem/cmd"
+import "dockem/cmd"
 
 func main() {
 	cmd.Execute()

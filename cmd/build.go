@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"dockem/utils"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -16,6 +19,8 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		fmt.Println("build called")
 		// First we need to check that the required flags are set.
 		// 1. Ensure that the directory flag is set and the directory exists
+		directory, _ := cmd.Flags().GetString("directory")
+		utils.AssertDirectoryExists(directory, "ERROR: The directory '%s' does not exist. Please specify the path to the directory you would like to build.")
 		// 2. Ensure that the dockerfile-path flag is set and the file exists
 		// 3. Ensure that the image-name flag is set
 		// 4. Ensure that the version-file flag is set and the file exists
