@@ -36,13 +36,15 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	}
 	overallHash += watchDirectoriesHash
 
-	// Hash the build directory
-	directoryHash, err := dirhash.HashDir(params.Directory, "", dirhash.Hash1)
-	if err != nil {
-		print(fmt.Sprintf("ERROR: An error ocurred when hashing the build directory, please ensure it exists and is not empty. You specified %s as the directory\n", params.Directory))
-		return err
+	// Hash the build directory if the ignore flag has not been specified
+	if !params.IgnoreBuildDirectory {
+		directoryHash, err := dirhash.HashDir(params.Directory, "", dirhash.Hash1)
+		if err != nil {
+			print(fmt.Sprintf("ERROR: An error ocurred when hashing the build directory, please ensure it exists and is not empty. You specified %s as the directory\n", params.Directory))
+			return err
+		}
+		overallHash += directoryHash
 	}
-	overallHash += directoryHash
 
 	// Hash the Dockerfile
 	dockerfileHash, err := dirhash.Hash1([]string{params.DockerfilePath}, osOpen)
