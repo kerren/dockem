@@ -15,7 +15,7 @@ func CreateDockerClient(username string, password string, registryName string) (
 
 	if err != nil {
 		print("ERROR: An error occurred when creating the docker client. Please ensure that the docker daemon is running and that you have the correct permissions to access it.\n")
-		return nil, err
+		return nil, image.PushOptions{}, err
 	}
 
 	// Print the version of the docker client
@@ -30,7 +30,7 @@ func CreateDockerClient(username string, password string, registryName string) (
 		}
 		encodedJSON, err := json.Marshal(authConfig)
 		if err != nil {
-			return nil, err
+			return nil, image.PushOptions{}, err
 		}
 
 		authStr := base64.URLEncoding.EncodeToString(encodedJSON)
