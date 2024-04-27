@@ -6,6 +6,8 @@ import (
 	"os"
 	"sort"
 
+	"github.com/regclient/regclient"
+	"github.com/regclient/regclient/config"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
@@ -24,7 +26,7 @@ type BuildDockerImageParams struct {
 	DockerPassword   string
 }
 
-func BuildDockerImage(params BuildDockerImageParams) {
+func BuildDockerImage(params BuildDockerImageParams) error {
 	// I create a string that I append all of the hashes to
 	overallHash := ""
 
@@ -42,7 +44,7 @@ func BuildDockerImage(params BuildDockerImageParams) {
 			for _, file := range params.WatchFile {
 				print(file + "\n")
 			}
-			panic(err)
+			return err
 		}
 		overallHash += watchFileHash
 	}
@@ -58,7 +60,7 @@ func BuildDockerImage(params BuildDockerImageParams) {
 				for _, dir := range params.WatchDirectory {
 					print(dir + "\n")
 				}
-				panic(err)
+				return err
 			}
 			overallHash += directoryHash
 		}
@@ -68,7 +70,7 @@ func BuildDockerImage(params BuildDockerImageParams) {
 	directoryHash, err := dirhash.HashDir(params.Directory, "", dirhash.Hash1)
 	if err != nil {
 		print(fmt.Sprintf("ERROR: An error ocurred when hashing the build directory, please ensure it exists and is not empty. You specified %s as the directory\n", params.Directory))
-		panic(err)
+		return err
 	}
 	overallHash += directoryHash
 
@@ -76,8 +78,28 @@ func BuildDockerImage(params BuildDockerImageParams) {
 	dockerfileHash, err := dirhash.Hash1([]string{params.DockerfilePath}, osOpen)
 	if err != nil {
 		print(fmt.Sprintf("ERROR: An error ocurred when hashing the Dockerfile, please ensure it exists. You specified %s as the Dockerfile\n", params.DockerfilePath))
-		panic(err)
+		return err
 	}
 	overallHash += dockerfileHash
+
+	// Now that we have the hash, we can check if this hash exist on the docker registry already.
+	// For this, we'll need regclient because it allows us to interact with the registry instead
+	// of just the docker daemon. https://github.com/regclient/regclient
+
+	host := *config.HostNew()
+	if params.Registry != "" {
+		host.Hostname = params.Registry
+	}
+	if params.DockerUsername != "" {
+		host.User = params.DockerUsername
+	}
+	if params.DockerPassword != "" {
+		host.Pass = params.DockerPassword
+	}
+
+	client := regclient.New(regclient.WithConfigHost(host))
+
+	// TODO: Implement this
+	// manifestHead, _ := client.ManifestHead(context.Background(), ref.Ref{},)
 
 }

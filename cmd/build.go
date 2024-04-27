@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"dockem/utils"
+
 	"github.com/spf13/cobra"
 )
 
@@ -26,7 +27,6 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		versionFile, _ := cmd.Flags().GetString("version-file")
 		utils.AssertFileExists(versionFile, "ERROR: The file '%s' does not exist. Please specify the path to the file that holds the version you would like to use in the build. This is a JSON file that must have the 'version' key.")
 
-		// Now we can collect the optional flags
 		dockerBuildFlags, _ := cmd.Flags().GetStringArray("docker-build-flags")
 		dockerPassword, _ := cmd.Flags().GetString("docker-password")
 		dockerUsername, _ := cmd.Flags().GetString("docker-username")
@@ -53,7 +53,10 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		}
 
 		// Finally, we push this off to the build docker image function
-		utils.BuildDockerImage(buildDockerImageParams)
+		err := utils.BuildDockerImage(buildDockerImageParams)
+		if err != nil {
+			panic(err)
+		}
 	},
 }
 
