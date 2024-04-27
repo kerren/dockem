@@ -146,23 +146,35 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 			versionTag := fmt.Sprintf("%s-%s", tag, version)
 			targetImageName := GenerateDockerImageName(params.Registry, params.ImageName, versionTag)
 			print(fmt.Sprintf("Copying the image to the new tag: %s\n", targetImageName))
-			// TODO: Implement this
+			copyError := CopyDockerImage(client, imageName, targetImageName)
+			if copyError != nil {
+				return copyError
+			}
 		}
 		if len(params.Tag) == 0 && !params.Latest && !params.MainVersion {
 			// At this point, we just deploy it straight to the main version
 			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
 			print(fmt.Sprintf("WARN: No tags were specified and you have not selected the --latest flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
-			// TODO: Implement this
+			copyError := CopyDockerImage(client, imageName, mainVersionImageName)
+			if copyError != nil {
+				return copyError
+			}
 		}
 		if params.Latest {
 			latestImageName := GenerateDockerImageName(params.Registry, params.ImageName, "latest")
 			print(fmt.Sprintf("You have selected the --latest flag, so the image will be deployed to the latest tag: %s\n", latestImageName))
-			// TODO: Implement this
+			copyError := CopyDockerImage(client, imageName, latestImageName)
+			if copyError != nil {
+				return copyError
+			}
 		}
 		if params.MainVersion {
 			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
 			print(fmt.Sprintf("You have selected the --main-version flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
-			// TODO: Implement this
+			copyError := CopyDockerImage(client, imageName, mainVersionImageName)
+			if copyError != nil {
+				return copyError
+			}
 		}
 	} else {
 		// We need to build the image and then we push it to the registry

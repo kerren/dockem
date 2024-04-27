@@ -12,20 +12,22 @@ func CopyDockerImage(client *regclient.RegClient, fromImageName string, toImageN
 	rFrom, errFrom := ref.New(fromImageName)
 	if errFrom != nil {
 		print(fmt.Sprintf("ERROR: Could not parse the from image name '%s'. Please ensure that the image name is correct.", fromImageName))
+		return errFrom
 	}
 
 	rTo, errTo := ref.New(toImageName)
 	if errTo != nil {
 		print(fmt.Sprintf("ERROR: Could not parse the to image name '%s'. Please ensure that the image name is correct.", toImageName))
+		return errTo
 	}
 
 	opts := []regclient.ImageOpts{}
 
-	error := client.ImageCopy(context.Background(), rFrom, rTo, opts...)
+	err := client.ImageCopy(context.Background(), rFrom, rTo, opts...)
 
-	if error != nil {
+	if err != nil {
 		print(fmt.Sprintf("ERROR: An error occurred when copying the image from '%s' to '%s'.", fromImageName, toImageName))
-		return error
+		return err
 	}
 	return nil
 }
