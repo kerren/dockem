@@ -1,12 +1,8 @@
 package utils
 
 import (
-	"context"
 	"fmt"
-	"os"
 
-	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/moby/term"
 	"github.com/regclient/regclient/types/ref"
 	"golang.org/x/mod/sumdb/dirhash"
 )
@@ -106,74 +102,19 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 
 		// Now we push the hashed image and then all of the other tags that the
 		// user has specified
-		termFd, isTerm := term.GetFdInfo(os.Stderr)
 		hashedImageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
-		tagErr := dockerClient.ImageTag(context.Background(), localTag, hashedImageName)
-		if tagErr != nil {
-			print(fmt.Sprintf("ERROR: An error ocurred when trying to tag the image hash: %s\n", tagErr))
-			return tagErr
+		hashedImageNameError := TagAndPushImage(localTag, hashedImageName, dockerClient, pushOptions)
+		if hashedImageNameError != nil {
+			return hashedImageNameError
 		}
 
-		hashedReader, pushError := dockerClient.ImagePush(context.Background(), hashedImageName, pushOptions)
-		if pushError != nil {
-			print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image hash: %s\n", pushError))
-			return pushError
-		}
-		jsonmessage.DisplayJSONMessagesStream(hashedReader, os.Stderr, termFd, isTerm, nil)
-		defer hashedReader.Close()
 		print(fmt.Sprintf("The image has been pushed to the registry with the hash %s\n", hashedImageName))
 
-		for _, tag := range params.Tag {
-			versionTag := fmt.Sprintf("%s-%s", tag, version)
-			targetImageName := GenerateDockerImageName(params.Registry, params.ImageName, versionTag)
-			print(fmt.Sprintf("Pushing the image to the new tag: %s\n", targetImageName))
-			dockerClient.ImageTag(context.Background(), localTag, targetImageName)
-			tagReader, pushError := dockerClient.ImagePush(context.Background(), targetImageName, pushOptions)
-			if pushError != nil {
-				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
-				return pushError
-			}
-			jsonmessage.DisplayJSONMessagesStream(tagReader, os.Stderr, termFd, isTerm, nil)
-			defer tagReader.Close()
+		// Now that the hashed image has been pushed, we can push all of the other tags
+		tagAndPushImagesError := TagAndPushNewImages(params, version, localTag, dockerClient, pushOptions)
+		if tagAndPushImagesError != nil {
+			return tagAndPushImagesError
 		}
-		if len(params.Tag) == 0 && !params.Latest && !params.MainVersion {
-			// At this point, we just deploy it straight to the main version
-			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
-			print(fmt.Sprintf("WARN: No tags were specified and you have not selected the --latest flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
-			dockerClient.ImageTag(context.Background(), localTag, mainVersionImageName)
-			warnReader, pushError := dockerClient.ImagePush(context.Background(), mainVersionImageName, pushOptions)
-			if pushError != nil {
-				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
-				return pushError
-			}
-			jsonmessage.DisplayJSONMessagesStream(warnReader, os.Stderr, termFd, isTerm, nil)
-			defer warnReader.Close()
-		}
-		if params.Latest {
-			latestImageName := GenerateDockerImageName(params.Registry, params.ImageName, "latest")
-			print(fmt.Sprintf("You have selected the --latest flag, so the image will be deployed to the latest tag: %s\n", latestImageName))
-			dockerClient.ImageTag(context.Background(), localTag, latestImageName)
-			latestReader, pushError := dockerClient.ImagePush(context.Background(), latestImageName, pushOptions)
-			if pushError != nil {
-				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
-				return pushError
-			}
-			jsonmessage.DisplayJSONMessagesStream(latestReader, os.Stderr, termFd, isTerm, nil)
-			defer latestReader.Close()
-		}
-		if params.MainVersion {
-			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
-			print(fmt.Sprintf("You have selected the --main-version flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
-			dockerClient.ImageTag(context.Background(), localTag, mainVersionImageName)
-			mainReader, pushError := dockerClient.ImagePush(context.Background(), mainVersionImageName, pushOptions)
-			if pushError != nil {
-				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
-				return pushError
-			}
-			jsonmessage.DisplayJSONMessagesStream(mainReader, os.Stderr, termFd, isTerm, nil)
-			defer mainReader.Close()
-		}
-
 	}
 
 	return nil
