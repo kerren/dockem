@@ -9,8 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"encoding/json"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -20,19 +18,6 @@ import (
 	"github.com/regclient/regclient/types/ref"
 	"golang.org/x/mod/sumdb/dirhash"
 )
-
-type Version struct {
-	Version string `json:"version"`
-}
-
-func ParseVersionFileJson(jsonData []byte) (*Version, error) {
-	var version Version
-	err := json.Unmarshal(jsonData, &version)
-	if err != nil {
-		return nil, err
-	}
-	return &version, nil
-}
 
 func BuildDockerImage(params BuildDockerImageParams) error {
 	// I create a string that I append all of the hashes to
