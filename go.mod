@@ -4,12 +4,14 @@ go 1.22.2
 
 require (
 	github.com/docker/docker v26.1.0+incompatible
+	github.com/moby/term v0.5.0
 	github.com/regclient/regclient v0.6.0
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/mod v0.17.0
 )
 
 require (
+	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.12.3 // indirect
 	github.com/containerd/containerd v1.7.16 // indirect
@@ -28,7 +30,6 @@ require (
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/user v0.1.0 // indirect
-	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
