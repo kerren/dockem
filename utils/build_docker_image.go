@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/regclient/regclient"
 	"github.com/regclient/regclient/config"
+	"github.com/regclient/regclient/types/ref"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
@@ -82,6 +85,10 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	}
 	overallHash += dockerfileHash
 
+	sha256Hash := sha256.New()
+	sha256Hash.Write([]byte(overallHash))
+	imageHash := fmt.Sprintf("%x", sha256Hash.Sum(nil))
+
 	// Now that we have the hash, we can check if this hash exist on the docker registry already.
 	// For this, we'll need regclient because it allows us to interact with the registry instead
 	// of just the docker daemon. https://github.com/regclient/regclient
@@ -99,7 +106,36 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 
 	client := regclient.New(regclient.WithConfigHost(host))
 
-	// TODO: Implement this
-	// manifestHead, _ := client.ManifestHead(context.Background(), ref.Ref{},)
+	imageName := ""
+	if params.Registry != "" {
+		imageName = fmt.Sprintf("%s/%s:%s", params.Registry, params.ImageName, imageHash)
+	} else {
+		imageName = fmt.Sprintf("%s:%s", params.ImageName, imageHash)
+	}
+	r, err := ref.New(imageName)
+	if err != nil {
+		print(fmt.Sprintf("ERROR: An error ocurred when trying to parse the image: %s\n", imageName))
+		return err
+	}
 
+	mOpts := []regclient.ManifestOpts{}
+	print(fmt.Sprintf("Checking for the image hash %s on the registry\n", imageHash))
+	_, manifestError := client.ManifestHead(context.Background(), r, mOpts...)
+	exists := true
+	if manifestError != nil {
+		print(fmt.Sprintf("The image hash %s does not exist on the registry\n", imageHash))
+		exists = false
+	}
+
+	if exists {
+		// If the image already exists, we just need to copy the tags across
+		for _, tag := range params.Tag {
+			// TODO: Implement this
+		}
+	} else {
+		// We need to build the image and then we push it to the registry
+		// TODO: Implement this
+	}
+
+	return nil
 }

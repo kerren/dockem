@@ -22,3 +22,5 @@ dockem
 
 # Go workspace file
 go.work
+
+test-dir
