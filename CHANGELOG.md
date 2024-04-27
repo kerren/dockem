@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.0.0](https://github.com/kerren/dockem/compare/v0.0.1...v1.0.0) (2024-04-27)
+
+
+### Features
+
+* **devops:** Add the major release script ([79d824a](https://github.com/kerren/dockem/commit/79d824a2a38d86ef196d459785fd1ec21708e622))
+
 ### 0.0.1 (2024-04-27)
 
 
