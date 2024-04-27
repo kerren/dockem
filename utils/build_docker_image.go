@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/moby/term"
 	"github.com/regclient/regclient/types/ref"
@@ -98,32 +96,17 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		defer dockerClient.Close()
 
 		// Build the image
-		reader, tarErr := archive.TarWithOptions(params.Directory, &archive.TarOptions{})
+		localTag, dockerImageBuildError := BuildImage(params, imageHash, dockerClient)
 
-		if tarErr != nil {
-			print(fmt.Sprintf("ERROR: An error ocurred when trying to archive the directory to send to the builder: %s\n", tarErr))
-			return tarErr
+		if dockerImageBuildError != nil {
+			return dockerImageBuildError
 		}
-
-		localTag := fmt.Sprintf("local:%s", imageHash)
-
-		imageBuildResult, imageBuildError := dockerClient.ImageBuild(context.Background(), reader, types.ImageBuildOptions{
-			Dockerfile: params.DockerfilePath,
-			Tags:       []string{localTag},
-		})
-
-		if imageBuildError != nil {
-			print(fmt.Sprintf("ERROR: An error ocurred when trying to build the image: %s\n", imageBuildError))
-			return imageBuildError
-		}
-		termFd, isTerm := term.GetFdInfo(os.Stderr)
-		jsonmessage.DisplayJSONMessagesStream(imageBuildResult.Body, os.Stderr, termFd, isTerm, nil)
-		imageBuildResult.Body.Close()
 
 		print("Docker build complete, pushing the image to the registry\n")
 
-		// First we push the hashed image
-
+		// Now we push the hashed image and then all of the other tags that the
+		// user has specified
+		termFd, isTerm := term.GetFdInfo(os.Stderr)
 		hashedImageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 		tagErr := dockerClient.ImageTag(context.Background(), localTag, hashedImageName)
 		if tagErr != nil {
