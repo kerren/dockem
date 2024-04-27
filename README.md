@@ -46,11 +46,22 @@ Flags:
 
 ```
 
+Here on some examples on how you would use this `cli`,
+
+```shell
+dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
+
+dockem build --directory=./apps/backend --watch-directory=./libs/shared --dockerfile-path=./apps/backend/Dockerfile --image-name=my-repo/backend --tag=dev --latest
+
+dockem build --image-name=my-repo/backend --registry=eu.reg.io --docker-username=uname --docker-password=1234 --tag=alpha --tag=test
+```
+
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
 
  - [ ] Add more examples to the documentation on how to use the `cli` effectively
  - [ ] Add documentation to the `utils` functions
+ - [ ] Create a Github Action that pulls the `dockem` binary
  - [ ] Create end-to-end tests to ensure the core is working, this allows for faster refactoring and feature development
  - [ ] Add to documentation on how to install for different platforms, like ARM and Apple Silicon
  - [ ] Add a Homebrew tap
