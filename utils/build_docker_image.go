@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -59,20 +58,10 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 
 	// Now we need to open the version file (JSON file) and pull out the "version" key
 
-	versionFile, versionFileError := os.Open(params.VersionFile)
-	if versionFileError != nil {
-		print(fmt.Sprintf("ERROR: An error ocurred when trying to open the version file: %s\n", params.VersionFile))
-		return versionFileError
+	version, versionError := ExtractVersion(params.VersionFile)
+	if versionError != nil {
+		return versionError
 	}
-	defer versionFile.Close()
-	bytes, _ := io.ReadAll(versionFile)
-	parsedVersionFile, parsedVersionFileError := ParseVersionFileJson(bytes)
-	if parsedVersionFileError != nil {
-		print(fmt.Sprintf("ERROR: An error ocurred when trying to parse the version file: %s\n", params.VersionFile))
-		return parsedVersionFileError
-	}
-	version := "v" + parsedVersionFile.Version
-	print(fmt.Sprintf("The version of the image being built is: %s\n", version))
 
 	// Now that we have the hash, we can check if this hash exist on the docker registry already.
 	// For this, we'll need regclient because it allows us to interact with the registry instead
