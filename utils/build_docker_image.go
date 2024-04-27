@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -54,9 +53,9 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	}
 	overallHash += dockerfileHash
 
-	sha256Hash := sha256.New()
-	sha256Hash.Write([]byte(overallHash))
-	imageHash := fmt.Sprintf("%x", sha256Hash.Sum(nil))
+	// We now have the hash of all of the different files combined into one (unique) string. We
+	// can now hash this string to create a unique hash for the image.
+	imageHash := HashString(overallHash)
 
 	// Now we need to open the version file (JSON file) and pull out the "version" key
 
