@@ -8,6 +8,8 @@ import (
 	"os"
 	"sort"
 
+	"encoding/json"
+
 	"github.com/regclient/regclient"
 	"github.com/regclient/regclient/config"
 	"github.com/regclient/regclient/types/ref"
@@ -15,18 +17,32 @@ import (
 )
 
 type BuildDockerImageParams struct {
-	WatchFile        []string
-	WatchDirectory   []string
 	Directory        string
 	DockerBuildFlags []string
+	DockerPassword   string
+	DockerUsername   string
 	DockerfilePath   string
 	ImageName        string
 	Latest           bool
-	VersionFile      string
+	MainVersion      bool
 	Registry         string
 	Tag              []string
-	DockerUsername   string
-	DockerPassword   string
+	VersionFile      string
+	WatchDirectory   []string
+	WatchFile        []string
+}
+
+type Version struct {
+	Version string `json:"version"`
+}
+
+func ParseVersionFileJson(jsonData []byte) (*Version, error) {
+	var version Version
+	err := json.Unmarshal(jsonData, &version)
+	if err != nil {
+		return nil, err
+	}
+	return &version, nil
 }
 
 func BuildDockerImage(params BuildDockerImageParams) error {
@@ -89,6 +105,23 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	sha256Hash.Write([]byte(overallHash))
 	imageHash := fmt.Sprintf("%x", sha256Hash.Sum(nil))
 
+	// Now we need to open the version file (JSON file) and pull out the "version" key
+
+	versionFile, versionFileError := os.Open(params.VersionFile)
+	defer versionFile.Close()
+	if versionFileError != nil {
+		print(fmt.Sprintf("ERROR: An error ocurred when trying to open the version file: %s\n", params.VersionFile))
+		return versionFileError
+	}
+	bytes, _ := io.ReadAll(versionFile)
+	parsedVersionFile, parsedVersionFileError := ParseVersionFileJson(bytes)
+	if parsedVersionFileError != nil {
+		print(fmt.Sprintf("ERROR: An error ocurred when trying to parse the version file: %s\n", params.VersionFile))
+		return parsedVersionFileError
+	}
+	version := "v" + parsedVersionFile.Version
+	print(fmt.Sprintf("The version of the image being built is: %s\n", version))
+
 	// Now that we have the hash, we can check if this hash exist on the docker registry already.
 	// For this, we'll need regclient because it allows us to interact with the registry instead
 	// of just the docker daemon. https://github.com/regclient/regclient
@@ -106,12 +139,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 
 	client := regclient.New(regclient.WithConfigHost(host))
 
-	imageName := ""
-	if params.Registry != "" {
-		imageName = fmt.Sprintf("%s/%s:%s", params.Registry, params.ImageName, imageHash)
-	} else {
-		imageName = fmt.Sprintf("%s:%s", params.ImageName, imageHash)
-	}
+	imageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 	r, err := ref.New(imageName)
 	if err != nil {
 		print(fmt.Sprintf("ERROR: An error ocurred when trying to parse the image: %s\n", imageName))
@@ -127,9 +155,29 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		exists = false
 	}
 
-	if exists {
+	// TODO: Swap this to the opposite, I'm doing this for testing purposes
+	if !exists {
 		// If the image already exists, we just need to copy the tags across
 		for _, tag := range params.Tag {
+			versionTag := fmt.Sprintf("%s-%s", tag, version)
+			targetImageName := GenerateDockerImageName(params.Registry, params.ImageName, versionTag)
+			print(fmt.Sprintf("Copying the image to the new tag: %s\n", targetImageName))
+			// TODO: Implement this
+		}
+		if len(params.Tag) == 0 && !params.Latest && !params.MainVersion {
+			// At this point, we just deploy it straight to the main version
+			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
+			print(fmt.Sprintf("WARN: No tags were specified and you have not selected the --latest flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
+			// TODO: Implement this
+		}
+		if params.Latest {
+			latestImageName := GenerateDockerImageName(params.Registry, params.ImageName, "latest")
+			print(fmt.Sprintf("You have selected the --latest flag, so the image will be deployed to the latest tag: %s\n", latestImageName))
+			// TODO: Implement this
+		}
+		if params.MainVersion {
+			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
+			print(fmt.Sprintf("You have selected the --main-version flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
 			// TODO: Implement this
 		}
 	} else {

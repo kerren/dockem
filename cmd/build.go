@@ -35,19 +35,21 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		tag, _ := cmd.Flags().GetStringArray("tag")
 		watchDirectory, _ := cmd.Flags().GetStringArray("watch-directory")
 		watchFile, _ := cmd.Flags().GetStringArray("watch-file")
+		mainVersion, _ := cmd.Flags().GetBool("main-version")
 
 		// Now we can create the build docker image params struct
 		buildDockerImageParams := utils.BuildDockerImageParams{
 			Directory:        directory,
-			DockerfilePath:   dockerfilePath,
-			ImageName:        imageName,
-			VersionFile:      versionFile,
 			DockerBuildFlags: dockerBuildFlags,
 			DockerPassword:   dockerPassword,
 			DockerUsername:   dockerUsername,
+			DockerfilePath:   dockerfilePath,
+			ImageName:        imageName,
 			Latest:           latest,
+			MainVersion:      mainVersion,
 			Registry:         registry,
 			Tag:              tag,
+			VersionFile:      versionFile,
 			WatchDirectory:   watchDirectory,
 			WatchFile:        watchFile,
 		}
@@ -75,10 +77,11 @@ func init() {
 	buildCmd.Flags().StringArrayP("tag", "t", []string{}, "The tag or tags that should be attached to image")
 	buildCmd.Flags().StringP("docker-username", "u", "", "The username that should be used to authenticate the docker client. Ignore if you have already logged in.")
 	buildCmd.Flags().StringP("docker-password", "p", "", "The password that should be used to authenticate the docker client. Ignore if you have already logged in.")
+	buildCmd.Flags().BoolP("main-version", "m", false, "Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.")
 
-	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable
+	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 
-$ dockem build --directory=./apps/backend --watch-directory=./libs/shared --dockerfile-path=./apps/backend/Dockerfile --image-name=my-repo/backend --tag=dev
+$ dockem build --directory=./apps/backend --watch-directory=./libs/shared --dockerfile-path=./apps/backend/Dockerfile --image-name=my-repo/backend --tag=dev --latest
 
 $ dockem build --image-name=my-repo/backend --registry=eu.reg.io --docker-username=uname --docker-password=1234 --tag=alpha --tag=test
 
