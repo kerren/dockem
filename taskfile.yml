@@ -15,3 +15,8 @@ tasks:
     desc: "Run a standard release from develop to main using git flow"
     cmds:
       - npx --yes entro-version release --main-branch-name=main
+
+  release-major:
+    desc: "Run a major release from develop to main using git flow"
+    cmds:
+      - npx --yes entro-version release --main-branch-name=main --commit-and-tag-version-flag="--release-as=major"
