@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 
 	"encoding/json"
 
@@ -112,18 +113,37 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	// For this, we'll need regclient because it allows us to interact with the registry instead
 	// of just the docker daemon. https://github.com/regclient/regclient
 
-	host := *config.HostNew()
+	host := config.Host{}
+	customHost := false
 	if params.Registry != "" {
 		host.Hostname = params.Registry
+		host.Name = params.Registry
+		customHost = true
 	}
 	if params.DockerUsername != "" {
 		host.User = params.DockerUsername
+		host.RepoAuth = true
+		customHost = true
 	}
 	if params.DockerPassword != "" {
 		host.Pass = params.DockerPassword
+		host.RepoAuth = true
+		customHost = true
 	}
 
-	client := regclient.New(regclient.WithConfigHost(host))
+	var regclientOpts []regclient.Opt
+
+	if customHost {
+		regclientOpts = []regclient.Opt{
+			regclient.WithConfigHost(host),
+			regclient.WithDockerCreds(),
+		}
+
+	} else {
+		regclientOpts = []regclient.Opt{}
+	}
+
+	client := regclient.New(regclientOpts...)
 
 	imageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 	r, err := ref.New(imageName)
@@ -137,7 +157,12 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	_, manifestError := client.ManifestHead(context.Background(), r, mOpts...)
 	exists := true
 	if manifestError != nil {
-		print(fmt.Sprintf("The image hash %s does not exist on the registry\n", imageHash))
+		print(fmt.Sprintf("The image hash %s does not exist on the registry or we were unable to pull it\n", imageHash))
+		if strings.Contains(manifestError.Error(), "failed to request manifest head") {
+			print("WARN: Unable to pull the details from the registry, please ensure you have the correct credentials.\n")
+			print("WARN: The build will continue, but this should be investigated\n")
+		}
+		print(manifestError.Error())
 		exists = false
 	}
 
