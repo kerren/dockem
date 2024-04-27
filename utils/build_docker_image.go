@@ -139,8 +139,8 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		exists = false
 	}
 
-	// TODO: Swap this to the opposite, I'm doing this for testing purposes
-	if !exists {
+	if exists {
+		print(fmt.Sprintf("The image hash %s already exists on the registry, we can now copy this to the other tags!\n", imageHash))
 		// If the image already exists, we just need to copy the tags across
 		for _, tag := range params.Tag {
 			versionTag := fmt.Sprintf("%s-%s", tag, version)
@@ -178,7 +178,8 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		}
 	} else {
 		// We need to build the image and then we push it to the registry
-		// TODO: Implement this
+		print(fmt.Sprintf("The image hash %s does not exist on the registry, we will now build the image and push it to the registry\n", imageHash))
+
 	}
 
 	return nil
