@@ -72,4 +72,12 @@ func BuildDockerImage(params BuildDockerImageParams) {
 	}
 	overallHash += directoryHash
 
+	// Hash the Dockerfile
+	dockerfileHash, err := dirhash.Hash1([]string{params.DockerfilePath}, osOpen)
+	if err != nil {
+		print(fmt.Sprintf("ERROR: An error ocurred when hashing the Dockerfile, please ensure it exists. You specified %s as the Dockerfile\n", params.DockerfilePath))
+		panic(err)
+	}
+	overallHash += dockerfileHash
+
 }
