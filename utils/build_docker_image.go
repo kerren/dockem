@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/moby/term"
-	"github.com/regclient/regclient"
 	"github.com/regclient/regclient/types/ref"
 	"golang.org/x/mod/sumdb/dirhash"
 )
@@ -66,6 +64,11 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	// of just the docker daemon. https://github.com/regclient/regclient
 	client := CreateRegclientClient(params.Registry, params.DockerUsername, params.DockerPassword)
 
+	// Now we create the image name of the image that should exist on the registry if it has
+	// been built before. This would look like this:
+	//
+	// 		org/image-name:hash
+	//
 	imageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 	r, err := ref.New(imageName)
 	if err != nil {
@@ -73,19 +76,9 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		return err
 	}
 
-	mOpts := []regclient.ManifestOpts{}
-	print(fmt.Sprintf("Checking for the image hash %s on the registry\n", imageHash))
-	_, manifestError := client.ManifestHead(context.Background(), r, mOpts...)
-	exists := true
-	if manifestError != nil {
-		print(fmt.Sprintf("The image hash %s does not exist on the registry or we were unable to pull it\n", imageHash))
-		if strings.Contains(manifestError.Error(), "failed to request manifest head") {
-			print("WARN: Unable to pull the details from the registry, please ensure you have the correct credentials.\n")
-			print("WARN: The build will continue, but this should be investigated\n")
-		}
-		print(manifestError.Error())
-		exists = false
-	}
+	// Now we do a HEAD request to see if the image exists on the registry already. This is
+	// really good for registries that have a limit on image pulls per day.
+	exists := CheckManifestHead(imageHash, r, client)
 
 	if exists {
 		print(fmt.Sprintf("The image hash %s already exists on the registry, we can now copy this to the other tags!\n", imageHash))
