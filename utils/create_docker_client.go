@@ -4,11 +4,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 )
 
-func CreateDockerClient(username string, password string, registry string) (*client.Client, error) {
+func CreateDockerClient(username string, password string, registryName string) (*client.Client, image.PushOptions, error) {
 	// Create a new docker client
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 
@@ -17,11 +18,15 @@ func CreateDockerClient(username string, password string, registry string) (*cli
 		return nil, err
 	}
 
+	// Print the version of the docker client
+	cli.ClientVersion()
+
 	if username != "" && password != "" {
-		authConfig := types.AuthConfig{
+		// See https://docs.docker.com/engine/api/sdk/examples/#pull-an-image-with-authentication for details
+		authConfig := registry.AuthConfig{
 			Username:      username,
 			Password:      password,
-			ServerAddress: registry,
+			ServerAddress: registryName,
 		}
 		encodedJSON, err := json.Marshal(authConfig)
 		if err != nil {
@@ -29,11 +34,12 @@ func CreateDockerClient(username string, password string, registry string) (*cli
 		}
 
 		authStr := base64.URLEncoding.EncodeToString(encodedJSON)
+		registryPushOptions := image.PushOptions{
+			RegistryAuth: authStr,
+		}
 
-		cli.RegistryAuth = authStr
+		return cli, registryPushOptions, nil
 	}
-	// Print the version of the docker client
-	cli.ClientVersion()
 
-	return cli, nil
+	return cli, image.PushOptions{}, nil
 }
