@@ -81,7 +81,7 @@ func init() {
 	buildCmd.Flags().StringP("docker-username", "u", "", "The username that should be used to authenticate the docker client. Ignore if you have already logged in.")
 	buildCmd.Flags().StringP("docker-password", "p", "", "The password that should be used to authenticate the docker client. Ignore if you have already logged in.")
 	buildCmd.Flags().BoolP("main-version", "m", false, "Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.")
-	buildCmd.Flags().BoolP("ignore-build-directory", I, false, "Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.")
+	buildCmd.Flags().BoolP("ignore-build-directory", "I", false, "Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.")
 
 	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 
