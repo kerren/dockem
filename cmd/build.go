@@ -57,6 +57,7 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		// Finally, we push this off to the build docker image function
 		err := utils.BuildDockerImage(buildDockerImageParams)
 		if err != nil {
+			print("\n\n")
 			panic(err)
 		}
 	},
