@@ -10,6 +10,8 @@ import (
 
 	"encoding/json"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/pkg/archive"
 	"github.com/regclient/regclient"
 	"github.com/regclient/regclient/config"
 	"github.com/regclient/regclient/types/ref"
@@ -122,6 +124,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	}
 
 	client := regclient.New(regclient.WithConfigHost(host))
+	defer client.Close()
 
 	imageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 	r, err := ref.New(imageName)
@@ -154,7 +157,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		if len(params.Tag) == 0 && !params.Latest && !params.MainVersion {
 			// At this point, we just deploy it straight to the main version
 			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
-			print(fmt.Sprintf("WARN: No tags were specified and you have not selected the --latest flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
+			print(fmt.Sprintf("WARN: No tags were specified and you have not selected the --latest flag, so the image will be copied to the main version: %s\n", mainVersionImageName))
 			copyError := CopyDockerImage(client, imageName, mainVersionImageName)
 			if copyError != nil {
 				return copyError
@@ -162,7 +165,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		}
 		if params.Latest {
 			latestImageName := GenerateDockerImageName(params.Registry, params.ImageName, "latest")
-			print(fmt.Sprintf("You have selected the --latest flag, so the image will be deployed to the latest tag: %s\n", latestImageName))
+			print(fmt.Sprintf("You have selected the --latest flag, so the image will be copied to the latest tag: %s\n", latestImageName))
 			copyError := CopyDockerImage(client, imageName, latestImageName)
 			if copyError != nil {
 				return copyError
@@ -170,7 +173,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		}
 		if params.MainVersion {
 			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
-			print(fmt.Sprintf("You have selected the --main-version flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
+			print(fmt.Sprintf("You have selected the --main-version flag, so the image will be copied to the main version: %s\n", mainVersionImageName))
 			copyError := CopyDockerImage(client, imageName, mainVersionImageName)
 			if copyError != nil {
 				return copyError
@@ -179,6 +182,76 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	} else {
 		// We need to build the image and then we push it to the registry
 		print(fmt.Sprintf("The image hash %s does not exist on the registry, we will now build the image and push it to the registry\n", imageHash))
+
+		dockerClient, pushOptions, err := CreateDockerClient(params.DockerUsername, params.DockerPassword, params.Registry)
+		if err != nil {
+			return err
+		}
+		defer dockerClient.Close()
+
+		// Build the image
+		reader, err := archive.TarWithOptions(params.Directory, &archive.TarOptions{})
+
+		localTag := fmt.Sprintf("local-%s", imageHash)
+
+		imageBuildResult, imageBuildError := dockerClient.ImageBuild(context.Background(), reader, types.ImageBuildOptions{
+			Dockerfile: params.DockerfilePath,
+			Tags:       []string{localTag},
+		})
+
+		if imageBuildError != nil {
+			print(fmt.Sprintf("ERROR: An error ocurred when trying to build the image: %s\n", imageBuildError))
+			return imageBuildError
+		}
+		imageBuildResult.Body.Close()
+
+		print("Docker build complete, pushing the image to the registry\n")
+		for _, tag := range params.Tag {
+			versionTag := fmt.Sprintf("%s-%s", tag, version)
+			targetImageName := GenerateDockerImageName(params.Registry, params.ImageName, versionTag)
+			print(fmt.Sprintf("Pushing the image to the new tag: %s\n", targetImageName))
+			dockerClient.ImageTag(context.Background(), localTag, targetImageName)
+			reader, pushError := dockerClient.ImagePush(context.Background(), targetImageName, pushOptions)
+			if pushError != nil {
+				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
+				return pushError
+			}
+			reader.Close()
+		}
+		if len(params.Tag) == 0 && !params.Latest && !params.MainVersion {
+			// At this point, we just deploy it straight to the main version
+			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
+			print(fmt.Sprintf("WARN: No tags were specified and you have not selected the --latest flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
+			dockerClient.ImageTag(context.Background(), localTag, mainVersionImageName)
+			reader, pushError := dockerClient.ImagePush(context.Background(), mainVersionImageName, pushOptions)
+			if pushError != nil {
+				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
+				return pushError
+			}
+			reader.Close()
+		}
+		if params.Latest {
+			latestImageName := GenerateDockerImageName(params.Registry, params.ImageName, "latest")
+			print(fmt.Sprintf("You have selected the --latest flag, so the image will be deployed to the latest tag: %s\n", latestImageName))
+			dockerClient.ImageTag(context.Background(), localTag, latestImageName)
+			reader, pushError := dockerClient.ImagePush(context.Background(), latestImageName, pushOptions)
+			if pushError != nil {
+				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
+				return pushError
+			}
+			reader.Close()
+		}
+		if params.MainVersion {
+			mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
+			print(fmt.Sprintf("You have selected the --main-version flag, so the image will be deployed to the main version: %s\n", mainVersionImageName))
+			dockerClient.ImageTag(context.Background(), localTag, mainVersionImageName)
+			reader, pushError := dockerClient.ImagePush(context.Background(), mainVersionImageName, pushOptions)
+			if pushError != nil {
+				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
+				return pushError
+			}
+			reader.Close()
+		}
 
 	}
 
