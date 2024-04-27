@@ -95,11 +95,11 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	// Now we need to open the version file (JSON file) and pull out the "version" key
 
 	versionFile, versionFileError := os.Open(params.VersionFile)
-	defer versionFile.Close()
 	if versionFileError != nil {
 		print(fmt.Sprintf("ERROR: An error ocurred when trying to open the version file: %s\n", params.VersionFile))
 		return versionFileError
 	}
+	defer versionFile.Close()
 	bytes, _ := io.ReadAll(versionFile)
 	parsedVersionFile, parsedVersionFileError := ParseVersionFileJson(bytes)
 	if parsedVersionFileError != nil {
