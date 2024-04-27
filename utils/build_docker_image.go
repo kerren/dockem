@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types"
@@ -31,21 +30,11 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	overallHash += hashWatchFileResult
 
 	// Hash the watch directories if they exist
-	if len(params.WatchDirectory) > 0 {
-		sort.Strings(params.WatchDirectory)
-
-		for _, directory := range params.WatchDirectory {
-			directoryHash, err := dirhash.HashDir(directory, "", dirhash.Hash1)
-			if err != nil {
-				print("ERROR: An error ocurred when hashing the watch directories, please ensure they all exist, they are listed as follows:\n")
-				for _, dir := range params.WatchDirectory {
-					print(dir + "\n")
-				}
-				return err
-			}
-			overallHash += directoryHash
-		}
+	watchDirectoriesHash, watchDirectoriesHashError := HashWatchDirectories(params.WatchDirectory)
+	if watchDirectoriesHashError != nil {
+		return watchDirectoriesHashError
 	}
+	overallHash += watchDirectoriesHash
 
 	// Hash the build directory
 	directoryHash, err := dirhash.HashDir(params.Directory, "", dirhash.Hash1)
