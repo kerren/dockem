@@ -23,24 +23,12 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	// I create a string that I append all of the hashes to
 	overallHash := ""
 
-	// This is the function that I'll use to open a SINGLE file
-	osOpen := func(name string) (io.ReadCloser, error) {
-		return os.Open(name)
-	}
-
 	// Hash the watch files if they exist
-	if len(params.WatchFile) > 0 {
-		// Note: No need to sort the files as they are sorted in the Hash1 function
-		watchFileHash, err := dirhash.Hash1(params.WatchFile, osOpen)
-		if err != nil {
-			print("ERROR: An error ocurred when hashing the watch files, please ensure they all exist, they are listed as follows:\n")
-			for _, file := range params.WatchFile {
-				print(file + "\n")
-			}
-			return err
-		}
-		overallHash += watchFileHash
+	hashWatchFileResult, hashWatchFileError := HashWatchFiles(params.WatchFile)
+	if hashWatchFileError != nil {
+		return hashWatchFileError
 	}
+	overallHash += hashWatchFileResult
 
 	// Hash the watch directories if they exist
 	if len(params.WatchDirectory) > 0 {
