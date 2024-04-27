@@ -20,6 +20,32 @@ chmod 755 dockem-v1.0.0-linux-amd64
 sudo mv ./dockem-v1.0.0-linux-amd64 /usr/local/bin/dockem
 ```
 
+## Usage
+
+```
+Usage:
+  dockem build [flags]
+
+
+Flags:
+  -d, --directory string                 (required) The directory that should be used as the context for the Docker build (default "./")
+  -b, --docker-build-flags stringArray   Any additional build flags you would like to pass directly into the docker build command
+  -p, --docker-password string           The password that should be used to authenticate the docker client. Ignore if you have already logged in.
+  -u, --docker-username string           The username that should be used to authenticate the docker client. Ignore if you have already logged in.
+  -f, --dockerfile-path string           (required) The path to the Dockerfile that should be used to build the image (default "./Dockerfile")
+  -h, --help                             help for build
+  -I, --ignore-build-directory           Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.
+  -i, --image-name string                (required) The name of the image you are building
+  -l, --latest                           Whether to push the latest tag with this image
+  -m, --main-version                     Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.
+  -r, --registry string                  The registry that should be used when pulling/pushing the image, Dockerhub is used by default
+  -t, --tag stringArray                  The tag or tags that should be attached to image
+  -F, --version-file string              (required) The name of the JSON file that holds the version to be used in the build. This JSON file must have the 'version' key. (default "./package.json")
+  -W, --watch-directory stringArray      Watch for changes in a directory or directories
+  -w, --watch-file stringArray           Watch for changes on a specific file or files
+
+```
+
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
 
