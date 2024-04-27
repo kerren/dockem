@@ -124,7 +124,6 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	}
 
 	client := regclient.New(regclient.WithConfigHost(host))
-	defer client.Close()
 
 	imageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 	r, err := ref.New(imageName)
