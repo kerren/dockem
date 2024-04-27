@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -62,5 +63,13 @@ func BuildDockerImage(params BuildDockerImageParams) {
 			overallHash += directoryHash
 		}
 	}
+
+	// Hash the build directory
+	directoryHash, err := dirhash.HashDir(params.Directory, "", dirhash.Hash1)
+	if err != nil {
+		print(fmt.Sprintf("ERROR: An error ocurred when hashing the build directory, please ensure it exists and is not empty. You specified %s as the directory\n", params.Directory))
+		panic(err)
+	}
+	overallHash += directoryHash
 
 }
