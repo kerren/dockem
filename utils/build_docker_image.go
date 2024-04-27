@@ -16,22 +16,6 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
-type BuildDockerImageParams struct {
-	Directory        string
-	DockerBuildFlags []string
-	DockerPassword   string
-	DockerUsername   string
-	DockerfilePath   string
-	ImageName        string
-	Latest           bool
-	MainVersion      bool
-	Registry         string
-	Tag              []string
-	VersionFile      string
-	WatchDirectory   []string
-	WatchFile        []string
-}
-
 type Version struct {
 	Version string `json:"version"`
 }
