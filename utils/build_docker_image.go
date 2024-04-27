@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/moby/term"
 	"github.com/regclient/regclient"
-	"github.com/regclient/regclient/config"
 	"github.com/regclient/regclient/types/ref"
 	"golang.org/x/mod/sumdb/dirhash"
 )
@@ -57,47 +56,15 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	imageHash := HashString(overallHash)
 
 	// Now we need to open the version file (JSON file) and pull out the "version" key
-
 	version, versionError := ExtractVersion(params.VersionFile)
 	if versionError != nil {
 		return versionError
 	}
 
-	// Now that we have the hash, we can check if this hash exist on the docker registry already.
+	// Now that we have the hash, we can check if this hash exists on the docker registry already.
 	// For this, we'll need regclient because it allows us to interact with the registry instead
 	// of just the docker daemon. https://github.com/regclient/regclient
-
-	host := config.Host{}
-	customHost := false
-	if params.Registry != "" {
-		host.Hostname = params.Registry
-		host.Name = params.Registry
-		customHost = true
-	}
-	if params.DockerUsername != "" {
-		host.User = params.DockerUsername
-		host.RepoAuth = true
-		customHost = true
-	}
-	if params.DockerPassword != "" {
-		host.Pass = params.DockerPassword
-		host.RepoAuth = true
-		customHost = true
-	}
-
-	var regclientOpts []regclient.Opt
-
-	if customHost {
-		regclientOpts = []regclient.Opt{
-			regclient.WithConfigHost(host),
-			regclient.WithDockerCreds(),
-		}
-
-	} else {
-		regclientOpts = []regclient.Opt{}
-	}
-
-	client := regclient.New(regclientOpts...)
+	client := CreateRegclientClient(params.Registry, params.DockerUsername, params.DockerPassword)
 
 	imageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 	r, err := ref.New(imageName)
