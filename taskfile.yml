@@ -20,3 +20,44 @@ tasks:
     desc: "Run a major release from develop to main using git flow"
     cmds:
       - npx --yes entro-version release --main-branch-name=main --commit-and-tag-version-flag="--release-as=major"
+
+  build:
+    desc: "Build the binary - the assumption is that this is done from the main branch"
+    cmds:
+      - |
+        # Shoutout to Rob Allen for this amazing article
+        # https://akrabat.com/building-go-binaries-for-different-platforms
+        rm -rf ./release
+        version=`git describe --tags HEAD`
+        platforms=(
+          "darwin/amd64"
+          "darwin/arm64"
+          "linux/amd64"
+          "linux/arm"
+          "linux/arm64"
+          "windows/amd64"
+        )
+        for platform in "${platforms[@]}"
+        do
+          platform_split=(${platform//\// })
+          GOOS=${platform_split[0]}
+          GOARCH=${platform_split[1]}
+
+          os=$GOOS
+          if [ $os = "darwin" ]; then
+              os="macOS"
+          fi
+
+          output_name="dockem-${version}-${os}-${GOARCH}"
+          if [ $os = "windows" ]; then
+              output_name+='.exe'
+          fi
+
+          echo "Building release/$output_name..."
+          env GOOS=$GOOS GOARCH=$GOARCH go build \
+            -o release/$output_name
+          if [ $? -ne 0 ]; then
+              echo 'An error has occurred! Aborting.'
+              exit 1
+          fi
+        done
