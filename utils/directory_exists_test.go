@@ -9,7 +9,6 @@ import (
 )
 
 func TestDirectoryDoesNotExist(t *testing.T) {
-
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 	randomInt := rand.Intn(100000000)
 	dirName := "test_dir_" + fmt.Sprintf("%d", randomInt)
@@ -17,11 +16,9 @@ func TestDirectoryDoesNotExist(t *testing.T) {
 	if exists {
 		t.Errorf("Directory %s should not exist", dirName)
 	}
-
 }
 
 func TestDirectoryExists(t *testing.T) {
-
 	dirName, _ := os.MkdirTemp("", "test_dir_")
 	exists, _ := DirectoryExists(dirName)
 	if !exists {

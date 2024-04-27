@@ -21,7 +21,6 @@ func TestFileDoesNotExist(t *testing.T) {
 }
 
 func TestFileDoesExist(t *testing.T) {
-
 	file, _ := os.CreateTemp("", "test_file")
 	exists, _ := FileExists(file.Name())
 	if !exists {
