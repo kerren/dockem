@@ -13,6 +13,8 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/moby/term"
 	"github.com/regclient/regclient"
 	"github.com/regclient/regclient/config"
 	"github.com/regclient/regclient/types/ref"
@@ -232,7 +234,8 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 			print(fmt.Sprintf("ERROR: An error ocurred when trying to build the image: %s\n", imageBuildError))
 			return imageBuildError
 		}
-		io.Copy(os.Stdout, imageBuildResult.Body)
+		termFd, isTerm := term.GetFdInfo(os.Stderr)
+		jsonmessage.DisplayJSONMessagesStream(imageBuildResult.Body, os.Stderr, termFd, isTerm, nil)
 		imageBuildResult.Body.Close()
 
 		print("Docker build complete, pushing the image to the registry\n")
@@ -251,7 +254,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 			print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image hash: %s\n", pushError))
 			return pushError
 		}
-		io.Copy(os.Stdout, hashedReader)
+		jsonmessage.DisplayJSONMessagesStream(hashedReader, os.Stderr, termFd, isTerm, nil)
 		defer hashedReader.Close()
 		print(fmt.Sprintf("The image has been pushed to the registry with the hash %s\n", hashedImageName))
 
@@ -265,7 +268,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
 				return pushError
 			}
-			io.Copy(os.Stdout, tagReader)
+			jsonmessage.DisplayJSONMessagesStream(tagReader, os.Stderr, termFd, isTerm, nil)
 			defer tagReader.Close()
 		}
 		if len(params.Tag) == 0 && !params.Latest && !params.MainVersion {
@@ -278,7 +281,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
 				return pushError
 			}
-			io.Copy(os.Stdout, warnReader)
+			jsonmessage.DisplayJSONMessagesStream(warnReader, os.Stderr, termFd, isTerm, nil)
 			defer warnReader.Close()
 		}
 		if params.Latest {
@@ -290,7 +293,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
 				return pushError
 			}
-			io.Copy(os.Stdout, latestReader)
+			jsonmessage.DisplayJSONMessagesStream(latestReader, os.Stderr, termFd, isTerm, nil)
 			defer latestReader.Close()
 		}
 		if params.MainVersion {
@@ -302,7 +305,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 				print(fmt.Sprintf("ERROR: An error ocurred when trying to push the image: %s\n", pushError))
 				return pushError
 			}
-			io.Copy(os.Stdout, mainReader)
+			jsonmessage.DisplayJSONMessagesStream(mainReader, os.Stderr, termFd, isTerm, nil)
 			defer mainReader.Close()
 		}
 

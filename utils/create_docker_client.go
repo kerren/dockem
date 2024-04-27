@@ -11,7 +11,7 @@ import (
 
 func CreateDockerClient(username string, password string, registryName string) (*client.Client, image.PushOptions, error) {
 	// Create a new docker client
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 
 	if err != nil {
 		print("ERROR: An error occurred when creating the docker client. Please ensure that the docker daemon is running and that you have the correct permissions to access it.\n")
