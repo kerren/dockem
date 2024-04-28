@@ -97,7 +97,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 		defer dockerClient.Close()
 
 		// Build the image
-		localTag, dockerImageBuildError := BuildImage(params, imageHash, dockerClient)
+		localTag, dockerImageBuildError := BuildImage(params, imageHash, dockerClient, &buildLog)
 
 		if dockerImageBuildError != nil {
 			return buildLog, dockerImageBuildError

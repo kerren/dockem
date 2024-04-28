@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.4.0](https://github.com/kerren/dockem/compare/v1.3.0...v1.4.0) (2024-04-28)
+
+
+### Features
+
+* **testing:** Add a test for the standard build where the hash has changed [#7](https://github.com/kerren/dockem/issues/7) ([4895c47](https://github.com/kerren/dockem/commit/4895c4715271c281a42252f6c023bc4524a67b29))
+* **testing:** Add a test where the Dockerfile is outside of the build context [#8](https://github.com/kerren/dockem/issues/8) ([7a835ec](https://github.com/kerren/dockem/commit/7a835ec9ef01aa7fa3ca9b399875bb3cb4b87f0e))
+
+
+### Bug Fixes
+
+* **testing:** Correct the branch name on the test workflow to main ([fc1a60e](https://github.com/kerren/dockem/commit/fc1a60e896a4582140e0a27dab91ad76012790e3))
+
 ## [1.3.0](https://github.com/kerren/dockem/compare/v1.2.2...v1.3.0) (2024-04-28)
 
 
