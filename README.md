@@ -67,6 +67,15 @@ dockem build --directory=./apps/backend --watch-directory=./libs/shared --docker
 dockem build --image-name=my-repo/backend --registry=eu.reg.io --docker-username=uname --docker-password=1234 --tag=alpha --tag=test
 ```
 
+## Usage in Actions
+
+I've also created a Github action for this, check out [kerren/setup-dockem](https://github.com/kerren/setup-dockem) to see details. In essence, you'll just need to add the following to your pipeline,
+
+```yaml
+    - name: Setup Dockem
+      uses: kerren/setup-dockem@v2
+```
+
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
 
