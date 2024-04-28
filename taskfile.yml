@@ -4,12 +4,16 @@ tasks:
   test:
     desc: "Run the test for all packages and subpackages"
     cmds:
-      - go test ./...
+      - | 
+        cd cli
+        go test ./...
 
   test-verbose:
     desc: "Run the test for all packages and subpackages with verbose output"
     cmds:
-      - go test -v ./...
+      - |
+        cd cli
+        go test -v ./...
 
   release:
     desc: "Run a standard release from develop to main using git flow"
