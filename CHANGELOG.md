@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+### [1.2.1](https://github.com/kerren/dockem/compare/v1.2.0...v1.2.1) (2024-04-28)
+
+
+### Bug Fixes
+
+* **build:** Add the ability to specify a Dockerfile with a path outside of the build context [#2](https://github.com/kerren/dockem/issues/2) ([e88b551](https://github.com/kerren/dockem/commit/e88b5512f4e7a2c431a5e5274f292ace21f29fc9))
+
 ## [1.2.0](https://github.com/kerren/dockem/compare/v1.1.1...v1.2.0) (2024-04-28)
 
 
