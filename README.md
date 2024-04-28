@@ -12,7 +12,7 @@ For my full argument, refer to [The Long Argument](#the-long-argument) below. Bu
 
 # Getting Started
 
-This library has been built in `go` in order for me to be able to build binaries for a bunch of different platforms. The easiest way to use this would be to go to the releases page and download the binary that suits you.
+This library has been built in `go` in order for me to be able to build binaries for a bunch of different platforms. The easiest way to use this would be to go to the [Releases Page](https://github.com/kerren/dockem/releases) and download the binary that suits you.
 
 ## Quick Install
 
@@ -22,6 +22,13 @@ If you're running an AMD64 Linux system and don't want the hassle of figuring th
 wget https://github.com/kerren/dockem/releases/download/v2.0.0/dockem-v2.0.0-linux-amd64
 chmod 755 dockem-v2.0.0-linux-amd64
 sudo mv ./dockem-v2.0.0-linux-amd64 /usr/local/bin/dockem
+```
+
+If you're running an ARM64 Linux system, you can run the following,
+```shell
+wget https://github.com/kerren/dockem/releases/download/v2.0.0/dockem-v2.0.0-linux-arm64
+chmod 755 dockem-v2.0.0-linux-arm64
+sudo mv ./dockem-v2.0.0-linux-arm64 /usr/local/bin/dockem
 ```
 
 ## Usage
