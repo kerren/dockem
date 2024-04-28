@@ -61,6 +61,7 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client)
 	reader, tarErr := archive.TarWithOptions(absDirectoryPath, &archive.TarOptions{})
 	if tarErr != nil {
 		print(fmt.Sprintf("ERROR: An error ocurred when trying to archive the directory to send to the builder: %s\n", tarErr))
+		os.Remove(tempDockerfileRef.Name())
 		return nil, "", tarErr
 	}
 
