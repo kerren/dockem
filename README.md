@@ -19,16 +19,16 @@ This library has been built in `go` in order for me to be able to build binaries
 If you're running an AMD64 Linux system and don't want the hassle of figuring things out, you can use the quick install script buy running the following in terminal.
 
 ```shell
-wget https://github.com/kerren/dockem/releases/download/v2.0.0/dockem-v2.0.0-linux-amd64
-chmod 755 dockem-v2.0.0-linux-amd64
-sudo mv ./dockem-v2.0.0-linux-amd64 /usr/local/bin/dockem
+wget https://github.com/kerren/dockem/releases/download/v2.1.0/dockem-v2.1.0-linux-amd64
+chmod 755 dockem-v2.1.0-linux-amd64
+sudo mv ./dockem-v2.1.0-linux-amd64 /usr/local/bin/dockem
 ```
 
 If you're running an ARM64 Linux system, you can run the following,
 ```shell
-wget https://github.com/kerren/dockem/releases/download/v2.0.0/dockem-v2.0.0-linux-arm64
-chmod 755 dockem-v2.0.0-linux-arm64
-sudo mv ./dockem-v2.0.0-linux-arm64 /usr/local/bin/dockem
+wget https://github.com/kerren/dockem/releases/download/v2.1.0/dockem-v2.1.0-linux-arm64
+chmod 755 dockem-v2.1.0-linux-arm64
+sudo mv ./dockem-v2.1.0-linux-arm64 /usr/local/bin/dockem
 ```
 
 ## Usage
@@ -65,6 +65,15 @@ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/
 dockem build --directory=./apps/backend --watch-directory=./libs/shared --dockerfile-path=./apps/backend/Dockerfile --image-name=my-repo/backend --tag=dev --latest
 
 dockem build --image-name=my-repo/backend --registry=eu.reg.io --docker-username=uname --docker-password=1234 --tag=alpha --tag=test
+```
+
+## Usage in Actions
+
+I've also created a Github action for this, check out [kerren/setup-dockem](https://github.com/kerren/setup-dockem) to see details. In essence, you'll just need to add the following to your pipeline,
+
+```yaml
+    - name: Setup Dockem
+      uses: kerren/setup-dockem@v2
 ```
 
 # Roadmap
