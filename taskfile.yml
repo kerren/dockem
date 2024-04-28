@@ -15,6 +15,13 @@ tasks:
         cd cli
         go test -v ./...
 
+  install-deps:
+    desc: "Install dependencies"
+    cmds:
+      - |
+        cd cli
+        go get .
+
   build-binary:
     desc: "Build the binary"
     cmds:

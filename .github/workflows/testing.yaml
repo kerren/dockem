@@ -28,7 +28,7 @@ jobs:
         run: go version
 
       - name: Install dependencies
-        run: go get .
+        run: task install-deps
 
       - name: Build the binary
         run: task build-binary
