@@ -38,11 +38,12 @@ func CreateRegclientClient(registry string, username string, password string, bu
 	if customHost {
 		regclientOpts = []regclient.Opt{
 			regclient.WithConfigHost(host),
-			regclient.WithDockerCreds(),
 		}
 
 	} else {
-		regclientOpts = []regclient.Opt{}
+		regclientOpts = []regclient.Opt{
+			regclient.WithDockerCreds(),
+		}
 	}
 
 	return regclient.New(regclientOpts...)
