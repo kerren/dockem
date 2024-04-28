@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.2.0](https://github.com/kerren/dockem/compare/v1.1.1...v1.2.0) (2024-04-28)
+
+
+### Features
+
+* **build:** Add the ability to calculate the relative paths between the Dockerfile and the build path. ([e56dbc5](https://github.com/kerren/dockem/commit/e56dbc50f1e7ab3450b977df8224dc857923cf39))
+
 ### [1.1.1](https://github.com/kerren/dockem/compare/v1.1.0...v1.1.1) (2024-04-27)
 
 ## [1.1.0](https://github.com/kerren/dockem/compare/v1.0.0...v1.1.0) (2024-04-27)
