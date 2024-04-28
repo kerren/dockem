@@ -7,8 +7,9 @@ import (
 )
 
 var buildCmd = &cobra.Command{
-	Use:   "build",
-	Short: "Build the new Docker image",
+	Use:     "build",
+	Short:   "Build the new Docker image",
+	Version: Version,
 	Long: `Check the files or folders specified and compare the hash to what has already
 been built. If it has been built, then skip the build and copy the tag,
 otherwise, build the new image and push it to the specified tag(s).`,
