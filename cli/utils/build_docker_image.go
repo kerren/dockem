@@ -10,6 +10,7 @@ import (
 func BuildDockerImage(params BuildDockerImageParams) error {
 	// I create a string that I append all of the hashes to
 	overallHash := ""
+	buildLog := BuildLog{}
 
 	// Hash the watch files if they exist
 	hashWatchFileResult, hashWatchFileError := HashWatchFiles(params.WatchFile)
@@ -46,12 +47,14 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	// We now have the hash of all of the different files combined into one (unique) string. We
 	// can now hash this string to create a unique hash for the image.
 	imageHash := HashString(overallHash)
+	buildLog.imageHash = imageHash
 
 	// Now we need to open the version file (JSON file) and pull out the "version" key
 	version, versionError := ExtractVersion(params.VersionFile)
 	if versionError != nil {
 		return versionError
 	}
+	buildLog.version = version
 
 	// Now that we have the hash, we can check if this hash exists on the docker registry already.
 	// For this, we'll need regclient because it allows us to interact with the registry instead
@@ -69,10 +72,12 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		print(fmt.Sprintf("ERROR: An error ocurred when trying to parse the image: %s\n", imageName))
 		return err
 	}
+	buildLog.hashedImageName = imageName
 
 	// Now we do a HEAD request to see if the image exists on the registry already. This is
 	// really good for registries that have a limit on image pulls per day.
 	exists := CheckManifestHead(imageHash, r, client)
+	buildLog.hashExists = exists
 
 	if exists {
 		print(fmt.Sprintf("The image hash %s already exists on the registry, we can now copy this to the other tags!\n", imageHash))
@@ -97,18 +102,18 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		if dockerImageBuildError != nil {
 			return dockerImageBuildError
 		}
+		buildLog.localTag = localTag
 
 		print("Docker build complete, pushing the image to the registry\n")
 
 		// Now we push the hashed image and then all of the other tags that the
 		// user has specified
-		hashedImageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
-		hashedImageNameError := TagAndPushImage(localTag, hashedImageName, dockerClient, pushOptions)
+		hashedImageNameError := TagAndPushImage(localTag, imageName, dockerClient, pushOptions)
 		if hashedImageNameError != nil {
 			return hashedImageNameError
 		}
 
-		print(fmt.Sprintf("The image has been pushed to the registry with the hash %s\n", hashedImageName))
+		print(fmt.Sprintf("The image has been pushed to the registry with the hash %s\n", imageName))
 
 		// Now that the hashed image has been pushed, we can push all of the other tags
 		tagAndPushImagesError := TagAndPushNewImages(params, version, localTag, dockerClient, pushOptions)
