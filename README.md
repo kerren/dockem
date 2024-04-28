@@ -2,6 +2,10 @@
 
 So what the heck is this?? Well, it's a `cli` that helps optimise your CI/CD Docker build processes. This tool uses hashes to calculate whether or not the Docker image should be rebuilt or the tag should just be copied. If it should be copied, it connects to the registry and copies the tag without having to do a docker push... And that makes it super fast! Shoutout to [regclient](https://github.com/regclient/regclient) for the API they provide to allow us to do this.
 
+
+[![Unit Tests](https://github.com/kerren/dockem/actions/workflows/testing.yaml/badge.svg?branch=main)](https://github.com/kerren/dockem/actions/workflows/testing.yaml)
+
+
 # The Argument
 
 For my full argument, refer to [The Long Argument](#the-long-argument) below. But in short, you can control what files or directories get hashed and only trigger a rebuild if they change. If there is no change, the `cli` will quickly copy the tag to the new one on the registry and you'll be good to go with your new tag.
