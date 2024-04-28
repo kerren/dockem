@@ -4,12 +4,16 @@ tasks:
   test:
     desc: "Run the test for all packages and subpackages"
     cmds:
-      - go test ./...
+      - | 
+        cd cli
+        go test ./...
 
   test-verbose:
     desc: "Run the test for all packages and subpackages with verbose output"
     cmds:
-      - go test -v ./...
+      - |
+        cd cli
+        go test -v ./...
 
   release:
     desc: "Run a standard release from develop to main using git flow"
@@ -28,6 +32,7 @@ tasks:
         # Shoutout to Rob Allen for this amazing article
         # https://akrabat.com/building-go-binaries-for-different-platforms
         rm -rf ./release
+        cd cli
         version=`git describe --tags HEAD`
         platforms=(
           "darwin/amd64"
@@ -55,7 +60,7 @@ tasks:
 
           echo "Building release/$output_name..."
           env GOOS=$GOOS GOARCH=$GOARCH go build \
-            -o release/$output_name
+            -o ../release/$output_name
           if [ $? -ne 0 ]; then
               echo 'An error has occurred! Aborting.'
               exit 1
