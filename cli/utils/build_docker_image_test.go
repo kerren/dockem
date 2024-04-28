@@ -35,7 +35,6 @@ func TestStandardBuildWhereHashExists(t *testing.T) {
 
 	params := BuildDockerImageParams{
 		Directory:            directory,
-		DockerBuildFlags:     []string{},
 		DockerPassword:       password,
 		DockerUsername:       username,
 		DockerfilePath:       directory + "/Dockerfile",
@@ -80,7 +79,6 @@ func TestStandardBuildWhereHashDoesNotExist(t *testing.T) {
 
 	params := BuildDockerImageParams{
 		Directory:            directory,
-		DockerBuildFlags:     []string{},
 		DockerPassword:       password,
 		DockerUsername:       username,
 		DockerfilePath:       directory + "/Dockerfile",
@@ -126,7 +124,6 @@ func TestDockerfileOutsideOfBuildContext(t *testing.T) {
 
 	params := BuildDockerImageParams{
 		Directory:            directory,
-		DockerBuildFlags:     []string{},
 		DockerPassword:       password,
 		DockerUsername:       username,
 		DockerfilePath:       dockerfilePath,
