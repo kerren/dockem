@@ -1,0 +1,5 @@
+FROM alpine:3.17.7
+
+COPY message /tmp/message
+ENTRYPOINT [ "/bin/sh", "-c" ]
+CMD ["/bin/cat /tmp/message"]

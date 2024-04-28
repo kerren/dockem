@@ -12,7 +12,7 @@ import (
 	"github.com/docker/docker/pkg/archive"
 )
 
-func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client) (io.Reader, string, error) {
+func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client, buildLog *BuildLog) (io.Reader, string, error) {
 
 	absDirectoryPath, absDirectoryPathError := filepath.Abs(params.Directory)
 	if absDirectoryPathError != nil {
@@ -34,6 +34,7 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client)
 	if strings.HasPrefix(relativeDockerfilePath, "../") {
 		// We'll make a temporary Dockerfile in the directory and copy the contents
 		// of the orignal into here
+		buildLog.customDockerfile = true
 		tempDockerfile, tempDockerfileError := os.CreateTemp(absDirectoryPath, "Dockerfile.")
 		if tempDockerfileError != nil {
 			print(fmt.Sprintf("ERROR: An error ocurred when trying to create a temporary Dockerfile for the build, please check that the directory is writable %s\n", absDirectoryPath))
@@ -41,6 +42,7 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client)
 		}
 		tempDockerfileRef = tempDockerfile
 		defer tempDockerfile.Close()
+		defer os.Remove(tempDockerfileRef.Name())
 		dockerfileContent, dockerfileContentError := os.ReadFile(absDockerfilePath)
 		if dockerfileContentError != nil {
 			print(fmt.Sprintf("ERROR: An error ocurred when trying to read the Dockerfile, please check your entry for %s\n", absDockerfilePath))
@@ -61,7 +63,6 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client)
 	reader, tarErr := archive.TarWithOptions(absDirectoryPath, &archive.TarOptions{})
 	if tarErr != nil {
 		print(fmt.Sprintf("ERROR: An error ocurred when trying to archive the directory to send to the builder: %s\n", tarErr))
-		os.Remove(tempDockerfileRef.Name())
 		return nil, "", tarErr
 	}
 
@@ -82,7 +83,6 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client)
 			return nil, "", readErr
 		}
 		outputReader = io.NopCloser(bytes.NewReader(data))
-		os.Remove(tempDockerfileRef.Name())
 	}
 
 	return outputReader, relativeDockerfilePath, nil
