@@ -15,6 +15,13 @@ tasks:
         cd cli
         go test -v ./...
 
+  build-binary:
+    desc: "Build the binary"
+    cmds:
+      - |
+        cd cli
+        go build
+
   release:
     desc: "Run a standard release from develop to main using git flow"
     cmds:
