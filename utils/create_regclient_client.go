@@ -23,6 +23,10 @@ func CreateRegclientClient(registry string, username string, password string) *r
 		host.RepoAuth = true
 		customHost = true
 	}
+	if customHost && registry == "" {
+		host.Name = config.DockerRegistry
+		host.Hostname = config.DockerRegistryDNS
+	}
 
 	var regclientOpts []regclient.Opt
 
