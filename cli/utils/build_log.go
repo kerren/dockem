@@ -11,4 +11,8 @@ type BuildLog struct {
 	outputTags      []string
 	hashedImageName string
 	localTag        string
+	dockerUsername  string
+	dockerPassword  string
+	dockerRegistry  string
+	customHost      bool
 }

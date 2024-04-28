@@ -59,7 +59,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	// Now that we have the hash, we can check if this hash exists on the docker registry already.
 	// For this, we'll need regclient because it allows us to interact with the registry instead
 	// of just the docker daemon. https://github.com/regclient/regclient
-	client := CreateRegclientClient(params.Registry, params.DockerUsername, params.DockerPassword)
+	client := CreateRegclientClient(params.Registry, params.DockerUsername, params.DockerPassword, &buildLog)
 
 	// Now we create the image name of the image that should exist on the registry if it has
 	// been built before. This would look like this:
@@ -82,7 +82,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	if exists {
 		print(fmt.Sprintf("The image hash %s already exists on the registry, we can now copy this to the other tags!\n", imageHash))
 		// If the image already exists, we just need to copy the tags across
-		copyError := CopyExistingImageTag(params, version, imageName, client, &buildLog)
+		copyError := CopyExistingImageTag(params, version, imageName, &client, &buildLog)
 		if copyError != nil {
 			return buildLog, copyError
 		}
