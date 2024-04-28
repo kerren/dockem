@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [1.3.0](https://github.com/kerren/dockem/compare/v1.2.2...v1.3.0) (2024-04-28)
+
+
+### Features
+
+* **structure:** Restructured the folders in the repository to make the code more maintainable [#5](https://github.com/kerren/dockem/issues/5) ([23c5e37](https://github.com/kerren/dockem/commit/23c5e377ac0926f166ce689961661e19774946f6))
+* **testing:** Add an end-to-end test for the standard build process where the hash exists [#6](https://github.com/kerren/dockem/issues/6) ([46f96a3](https://github.com/kerren/dockem/commit/46f96a347dfd7504a7d49b1ea1cb787df7122c8c))
+
 ### [1.2.2](https://github.com/kerren/dockem/compare/v1.2.1...v1.2.2) (2024-04-28)
 
 
