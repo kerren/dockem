@@ -12,7 +12,7 @@ For my full argument, refer to [The Long Argument](#the-long-argument) below. Bu
 
 # Getting Started
 
-This library has been built in `go` in order for me to be able to build binaries for a bunch of different platforms. The easiest way to use this would be to go to the releases page and download the binary that suits you.
+This library has been built in `go` in order for me to be able to build binaries for a bunch of different platforms. The easiest way to use this would be to go to the [Releases Page](https://github.com/kerren/dockem/releases) and download the binary that suits you.
 
 ## Quick Install
 
