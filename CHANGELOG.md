@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.0.0](https://github.com/kerren/dockem/compare/v1.4.0...v2.0.0) (2024-04-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **build:** Remove the docker build flags as an option because we don't currently do anything with them #9
+
+### Bug Fixes
+
+* **build:** Remove the docker build flags as an option because we don't currently do anything with them [#9](https://github.com/kerren/dockem/issues/9) ([8b066f4](https://github.com/kerren/dockem/commit/8b066f4194a658948ac305f1459e6803583dcd63))
+
 ## [1.4.0](https://github.com/kerren/dockem/compare/v1.3.0...v1.4.0) (2024-04-28)
 
 
