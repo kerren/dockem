@@ -69,7 +69,6 @@ func init() {
 	buildCmd.Flags().StringArrayP("watch-file", "w", []string{}, "Watch for changes on a specific file or files")
 	buildCmd.Flags().StringArrayP("watch-directory", "W", []string{}, "Watch for changes in a directory or directories")
 	buildCmd.Flags().StringP("directory", "d", "./", "(required) The directory that should be used as the context for the Docker build")
-	buildCmd.Flags().StringArrayP("docker-build-flags", "b", []string{}, "Any additional build flags you would like to pass directly into the docker build command")
 	buildCmd.Flags().StringP("dockerfile-path", "f", "./Dockerfile", "(required) The path to the Dockerfile that should be used to build the image")
 	buildCmd.Flags().StringP("image-name", "i", "", "(required) The name of the image you are building")
 	buildCmd.Flags().BoolP("latest", "l", false, "Whether to push the latest tag with this image")
