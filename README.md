@@ -19,9 +19,9 @@ This library has been built in `go` in order for me to be able to build binaries
 If you're running an AMD64 Linux system and don't want the hassle of figuring things out, you can use the quick install script buy running the following in terminal.
 
 ```shell
-wget https://github.com/kerren/dockem/releases/download/v1.3.0/dockem-v1.3.0-linux-amd64
-chmod 755 dockem-v1.3.0-linux-amd64
-sudo mv ./dockem-v1.3.0-linux-amd64 /usr/local/bin/dockem
+wget https://github.com/kerren/dockem/releases/download/v1.4.0/dockem-v1.4.0-linux-amd64
+chmod 755 dockem-v1.4.0-linux-amd64
+sudo mv ./dockem-v1.4.0-linux-amd64 /usr/local/bin/dockem
 ```
 
 ## Usage
