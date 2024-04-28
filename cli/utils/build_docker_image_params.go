@@ -2,7 +2,6 @@ package utils
 
 type BuildDockerImageParams struct {
 	Directory            string
-	DockerBuildFlags     []string
 	DockerPassword       string
 	DockerUsername       string
 	DockerfilePath       string
