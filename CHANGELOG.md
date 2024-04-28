@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.1.0](https://github.com/kerren/dockem/compare/v2.0.0...v2.1.0) (2024-04-28)
+
+
+### Features
+
+* **version:** Add the version to the CLI and build it in using ldflags [#10](https://github.com/kerren/dockem/issues/10) ([769b04b](https://github.com/kerren/dockem/commit/769b04b2b51eb3f28cb4b7d59773ffb194fae266))
+
 ## [2.0.0](https://github.com/kerren/dockem/compare/v1.4.0...v2.0.0) (2024-04-28)
 
 
