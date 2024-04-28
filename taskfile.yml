@@ -45,6 +45,8 @@ tasks:
       - |
         # Shoutout to Rob Allen for this amazing article
         # https://akrabat.com/building-go-binaries-for-different-platforms
+        # https://akrabat.com/setting-the-version-of-a-go-application-when-building/
+
         rm -rf ./release
         cd cli
         version=`git describe --tags HEAD`
@@ -74,6 +76,7 @@ tasks:
 
           echo "Building release/$output_name..."
           env GOOS=$GOOS GOARCH=$GOARCH go build \
+            -ldflags "-X dockem/cmd.Version=$version" \
             -o ../release/$output_name
           if [ $? -ne 0 ]; then
               echo 'An error has occurred! Aborting.'
