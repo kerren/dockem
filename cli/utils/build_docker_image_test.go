@@ -13,7 +13,7 @@ func TestStandardBuildWhereHashExists(t *testing.T) {
 	username := os.Getenv("DOCKER_USERNAME")
 	password := os.Getenv("DOCKER_PASSWORD")
 	if imageName == "" || username == "" || password == "" {
-		t.Skip("Skipping test because environment variables are not set")
+		t.Fatal("Unable to run test because environment variables are not set")
 	}
 	testDirectory := "../../testing/e2e/base-test-image"
 	directory := testDirectory + "/build"
