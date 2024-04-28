@@ -6,7 +6,7 @@ import (
 	"github.com/regclient/regclient/regclient"
 )
 
-func CopyExistingImageTag(params BuildDockerImageParams, version string, imageNameWithHash string, client regclient.RegClient) error {
+func CopyExistingImageTag(params BuildDockerImageParams, version string, imageNameWithHash string, client regclient.RegClient, buildLog *BuildLog) error {
 	for _, tag := range params.Tag {
 		tagVersion := fmt.Sprintf("%s-%s", tag, version)
 		targetImageName := GenerateDockerImageName(params.Registry, params.ImageName, tagVersion)
@@ -15,6 +15,7 @@ func CopyExistingImageTag(params BuildDockerImageParams, version string, imageNa
 		if copyError != nil {
 			return copyError
 		}
+		buildLog.outputTags = append(buildLog.outputTags, targetImageName)
 	}
 	if len(params.Tag) == 0 && !params.Latest && !params.MainVersion {
 		// At this point, we just deploy it straight to the main version
@@ -24,6 +25,7 @@ func CopyExistingImageTag(params BuildDockerImageParams, version string, imageNa
 		if copyError != nil {
 			return copyError
 		}
+		buildLog.outputTags = append(buildLog.outputTags, mainVersionImageName)
 	}
 	if params.Latest {
 		latestImageName := GenerateDockerImageName(params.Registry, params.ImageName, "latest")
@@ -32,6 +34,7 @@ func CopyExistingImageTag(params BuildDockerImageParams, version string, imageNa
 		if copyError != nil {
 			return copyError
 		}
+		buildLog.outputTags = append(buildLog.outputTags, latestImageName)
 	}
 	if params.MainVersion {
 		mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
@@ -40,6 +43,7 @@ func CopyExistingImageTag(params BuildDockerImageParams, version string, imageNa
 		if copyError != nil {
 			return copyError
 		}
+		buildLog.outputTags = append(buildLog.outputTags, mainVersionImageName)
 	}
 	return nil
 }

@@ -7,7 +7,7 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
-func BuildDockerImage(params BuildDockerImageParams) error {
+func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	// I create a string that I append all of the hashes to
 	overallHash := ""
 	buildLog := BuildLog{}
@@ -15,14 +15,14 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	// Hash the watch files if they exist
 	hashWatchFileResult, hashWatchFileError := HashWatchFiles(params.WatchFile)
 	if hashWatchFileError != nil {
-		return hashWatchFileError
+		return buildLog, hashWatchFileError
 	}
 	overallHash += hashWatchFileResult
 
 	// Hash the watch directories if they exist
 	watchDirectoriesHash, watchDirectoriesHashError := HashWatchDirectories(params.WatchDirectory)
 	if watchDirectoriesHashError != nil {
-		return watchDirectoriesHashError
+		return buildLog, watchDirectoriesHashError
 	}
 	overallHash += watchDirectoriesHash
 
@@ -31,7 +31,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		directoryHash, err := dirhash.HashDir(params.Directory, "", dirhash.Hash1)
 		if err != nil {
 			print(fmt.Sprintf("ERROR: An error ocurred when hashing the build directory, please ensure it exists and is not empty. You specified %s as the directory\n", params.Directory))
-			return err
+			return buildLog, err
 		}
 		overallHash += directoryHash
 	}
@@ -40,7 +40,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	dockerfileHash, err := dirhash.Hash1([]string{params.DockerfilePath}, osOpen)
 	if err != nil {
 		print(fmt.Sprintf("ERROR: An error ocurred when hashing the Dockerfile, please ensure it exists. You specified %s as the Dockerfile\n", params.DockerfilePath))
-		return err
+		return buildLog, err
 	}
 	overallHash += dockerfileHash
 
@@ -52,7 +52,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	// Now we need to open the version file (JSON file) and pull out the "version" key
 	version, versionError := ExtractVersion(params.VersionFile)
 	if versionError != nil {
-		return versionError
+		return buildLog, versionError
 	}
 	buildLog.version = version
 
@@ -70,7 +70,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	r, err := ref.New(imageName)
 	if err != nil {
 		print(fmt.Sprintf("ERROR: An error ocurred when trying to parse the image: %s\n", imageName))
-		return err
+		return buildLog, err
 	}
 	buildLog.hashedImageName = imageName
 
@@ -82,9 +82,9 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 	if exists {
 		print(fmt.Sprintf("The image hash %s already exists on the registry, we can now copy this to the other tags!\n", imageHash))
 		// If the image already exists, we just need to copy the tags across
-		copyError := CopyExistingImageTag(params, version, imageName, client)
+		copyError := CopyExistingImageTag(params, version, imageName, client, &buildLog)
 		if copyError != nil {
-			return copyError
+			return buildLog, copyError
 		}
 	} else {
 		// We need to build the image and then we push it to the registry
@@ -92,7 +92,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 
 		dockerClient, pushOptions, err := CreateDockerClient(params.DockerUsername, params.DockerPassword, params.Registry)
 		if err != nil {
-			return err
+			return buildLog, err
 		}
 		defer dockerClient.Close()
 
@@ -100,7 +100,7 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		localTag, dockerImageBuildError := BuildImage(params, imageHash, dockerClient)
 
 		if dockerImageBuildError != nil {
-			return dockerImageBuildError
+			return buildLog, dockerImageBuildError
 		}
 		buildLog.localTag = localTag
 
@@ -110,17 +110,17 @@ func BuildDockerImage(params BuildDockerImageParams) error {
 		// user has specified
 		hashedImageNameError := TagAndPushImage(localTag, imageName, dockerClient, pushOptions)
 		if hashedImageNameError != nil {
-			return hashedImageNameError
+			return buildLog, hashedImageNameError
 		}
 
 		print(fmt.Sprintf("The image has been pushed to the registry with the hash %s\n", imageName))
 
 		// Now that the hashed image has been pushed, we can push all of the other tags
-		tagAndPushImagesError := TagAndPushNewImages(params, version, localTag, dockerClient, pushOptions)
+		tagAndPushImagesError := TagAndPushNewImages(params, version, localTag, dockerClient, pushOptions, &buildLog)
 		if tagAndPushImagesError != nil {
-			return tagAndPushImagesError
+			return buildLog, tagAndPushImagesError
 		}
 	}
 
-	return nil
+	return buildLog, nil
 }

@@ -36,9 +36,12 @@ func TestStandardBuildWhereHashExists(t *testing.T) {
 		WatchFile:            []string{},
 	}
 
-	err := BuildDockerImage(params)
+	buildLog, err := BuildDockerImage(params)
 	if err != nil {
 		t.Errorf("Error building the docker image: %s", err)
+	}
+	if !buildLog.hashExists {
+		t.Errorf("The hash should exist")
 	}
 
 }

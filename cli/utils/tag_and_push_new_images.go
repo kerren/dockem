@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/client"
 )
 
-func TagAndPushNewImages(params BuildDockerImageParams, version string, localTag string, dockerClient *client.Client, pushOptions types.ImagePushOptions) error {
+func TagAndPushNewImages(params BuildDockerImageParams, version string, localTag string, dockerClient *client.Client, pushOptions types.ImagePushOptions, buildLog *BuildLog) error {
 	for _, tag := range params.Tag {
 		versionTag := fmt.Sprintf("%s-%s", tag, version)
 		targetImageName := GenerateDockerImageName(params.Registry, params.ImageName, versionTag)
@@ -16,6 +16,7 @@ func TagAndPushNewImages(params BuildDockerImageParams, version string, localTag
 		if err != nil {
 			return err
 		}
+		buildLog.outputTags = append(buildLog.outputTags, targetImageName)
 	}
 	if len(params.Tag) == 0 && !params.Latest && !params.MainVersion {
 		// At this point, we just deploy it straight to the main version
@@ -25,6 +26,7 @@ func TagAndPushNewImages(params BuildDockerImageParams, version string, localTag
 		if err != nil {
 			return err
 		}
+		buildLog.outputTags = append(buildLog.outputTags, mainVersionImageName)
 	}
 	if params.Latest {
 		latestImageName := GenerateDockerImageName(params.Registry, params.ImageName, "latest")
@@ -33,6 +35,7 @@ func TagAndPushNewImages(params BuildDockerImageParams, version string, localTag
 		if err != nil {
 			return err
 		}
+		buildLog.outputTags = append(buildLog.outputTags, latestImageName)
 	}
 	if params.MainVersion {
 		mainVersionImageName := GenerateDockerImageName(params.Registry, params.ImageName, version)
@@ -41,6 +44,7 @@ func TagAndPushNewImages(params BuildDockerImageParams, version string, localTag
 		if err != nil {
 			return err
 		}
+		buildLog.outputTags = append(buildLog.outputTags, mainVersionImageName)
 	}
 	return nil
 }
