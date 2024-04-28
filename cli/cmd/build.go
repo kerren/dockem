@@ -27,7 +27,6 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		versionFile, _ := cmd.Flags().GetString("version-file")
 		utils.AssertFileExists(versionFile, "ERROR: The file '%s' does not exist. Please specify the path to the file that holds the version you would like to use in the build. This is a JSON file that must have the 'version' key.")
 
-		dockerBuildFlags, _ := cmd.Flags().GetStringArray("docker-build-flags")
 		dockerPassword, _ := cmd.Flags().GetString("docker-password")
 		dockerUsername, _ := cmd.Flags().GetString("docker-username")
 		ignoreBuildDirectory, _ := cmd.Flags().GetBool("ignore-build-directory")
@@ -41,7 +40,6 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		// Now we can create the build docker image params struct
 		buildDockerImageParams := utils.BuildDockerImageParams{
 			Directory:            directory,
-			DockerBuildFlags:     dockerBuildFlags,
 			DockerPassword:       dockerPassword,
 			DockerUsername:       dockerUsername,
 			DockerfilePath:       dockerfilePath,
