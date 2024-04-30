@@ -22,6 +22,11 @@ I've created a quick install script that will download the latest version of the
 curl -s https://raw.githubusercontent.com/kerren/dockem/main/scripts/get_dockem.sh | bash
 ```
 
+Note, the above script **requires sudo** to move the binary to `/usr/local/bin`. If you don't want to use sudo, you can download the binary to the current directory using,
+
+```shell
+curl -s https://raw.githubusercontent.com/kerren/dockem/main/scripts/get_dockem_local.sh | bash
+```
 
 ### Installing a Specific Version
 If you're running an AMD64 Linux system and don't want the hassle of figuring things out, you can use the quick install script buy running the following in terminal.
