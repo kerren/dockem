@@ -40,7 +40,6 @@ Usage:
 
 Flags:
   -d, --directory string                 (required) The directory that should be used as the context for the Docker build (default "./")
-  -b, --docker-build-flags stringArray   Any additional build flags you would like to pass directly into the docker build command
   -p, --docker-password string           The password that should be used to authenticate the docker client. Ignore if you have already logged in.
   -u, --docker-username string           The username that should be used to authenticate the docker client. Ignore if you have already logged in.
   -f, --dockerfile-path string           (required) The path to the Dockerfile that should be used to build the image (default "./Dockerfile")
