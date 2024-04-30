@@ -23,15 +23,12 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 1.22.x
-      
+
       - name: Display go version
         run: go version
 
       - name: Install dependencies
         run: task install-deps
-
-      - name: Build the binary
-        run: task build-binary
 
       - name: Run tests
         env:
