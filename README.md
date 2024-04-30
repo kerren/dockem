@@ -79,11 +79,11 @@ I've also created a Github action for this, check out [kerren/setup-dockem](http
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
 
+ - [x] Create a Github Action that pulls the `dockem` binary
+ - [x] Add to documentation on how to install for different platforms, like ARM and Apple Silicon
+ - [ ] [WIP] Create end-to-end tests to ensure the core is working, this allows for faster refactoring and feature development
  - [ ] Add more examples to the documentation on how to use the `cli` effectively
  - [ ] Add documentation to the `utils` functions
- - [ ] Create a Github Action that pulls the `dockem` binary
- - [ ] Create end-to-end tests to ensure the core is working, this allows for faster refactoring and feature development
- - [ ] Add to documentation on how to install for different platforms, like ARM and Apple Silicon
  - [ ] Add a Homebrew tap
  - [ ] Add the ability to enable `buildx` caching for Github Actions. This could make the builds faster in future.
  - [ ] Add the ability to specify the platform(s) you'd like to build for using a `buildx` builder. This would be cool to be able to build ARM images using a standard runner. For now, I recommend deploying a custom ARM runner and building on that (it'll also be a lot faster)
