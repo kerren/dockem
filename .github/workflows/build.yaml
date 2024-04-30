@@ -1,4 +1,4 @@
-name: "Unit Tests"
+name: "Build"
 
 on:
   push:
@@ -11,8 +11,9 @@ on:
       - develop
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v3
 
@@ -30,9 +31,5 @@ jobs:
       - name: Install dependencies
         run: task install-deps
 
-      - name: Run tests
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          TEST_IMAGE_NAME: ${{ vars.TEST_IMAGE_NAME }}
-        run: task test-verbose
+      - name: Build the binary
+        run: task build-binary

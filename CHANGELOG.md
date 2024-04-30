@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.2.0](https://github.com/kerren/dockem/compare/v2.1.0...v2.2.0) (2024-04-30)
+
+
+### Features
+
+* **devops:** Add a get script to pull the latest binary [#13](https://github.com/kerren/dockem/issues/13) ([6ac0af8](https://github.com/kerren/dockem/commit/6ac0af842c203f1316ce1e66cbe1daa5bda54076))
+* **devops:** Split the build workflow out of the tests [#12](https://github.com/kerren/dockem/issues/12) ([6a44e85](https://github.com/kerren/dockem/commit/6a44e85fb0f72e27decb30e0dd08a8bf074cd05f))
+* **refactor:** Use a consistent print function across the code [#11](https://github.com/kerren/dockem/issues/11) ([8a7ab17](https://github.com/kerren/dockem/commit/8a7ab17b2f86610c1e75cd64855c605fdd8c864c))
+
 ## [2.1.0](https://github.com/kerren/dockem/compare/v2.0.0...v2.1.0) (2024-04-28)
 
 

@@ -16,6 +16,19 @@ This library has been built in `go` in order for me to be able to build binaries
 
 ## Quick Install
 
+I've created a quick install script that will download the latest version of the binary for you. This is still a work in progress and I need to test this on Mac and Windows. If you're running a Linux system, this should work without a hassle. For the other systems, I suggest you check out the [Releases Page](https://github.com/kerren/dockem/releases) and download the binary from there.
+
+```shell
+curl -s https://raw.githubusercontent.com/kerren/dockem/main/scripts/get_dockem.sh | bash
+```
+
+Note, the above script **requires sudo** to move the binary to `/usr/local/bin`. If you don't want to use sudo, you can download the binary to the current directory using,
+
+```shell
+curl -s https://raw.githubusercontent.com/kerren/dockem/main/scripts/get_dockem_local.sh | bash
+```
+
+### Installing a Specific Version
 If you're running an AMD64 Linux system and don't want the hassle of figuring things out, you can use the quick install script buy running the following in terminal.
 
 ```shell
@@ -40,7 +53,6 @@ Usage:
 
 Flags:
   -d, --directory string                 (required) The directory that should be used as the context for the Docker build (default "./")
-  -b, --docker-build-flags stringArray   Any additional build flags you would like to pass directly into the docker build command
   -p, --docker-password string           The password that should be used to authenticate the docker client. Ignore if you have already logged in.
   -u, --docker-username string           The username that should be used to authenticate the docker client. Ignore if you have already logged in.
   -f, --dockerfile-path string           (required) The path to the Dockerfile that should be used to build the image (default "./Dockerfile")
@@ -79,11 +91,11 @@ I've also created a Github action for this, check out [kerren/setup-dockem](http
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
 
+ - [x] Create a Github Action that pulls the `dockem` binary
+ - [x] Add to documentation on how to install for different platforms, like ARM and Apple Silicon
+ - [ ] [WIP] Create end-to-end tests to ensure the core is working, this allows for faster refactoring and feature development
  - [ ] Add more examples to the documentation on how to use the `cli` effectively
  - [ ] Add documentation to the `utils` functions
- - [ ] Create a Github Action that pulls the `dockem` binary
- - [ ] Create end-to-end tests to ensure the core is working, this allows for faster refactoring and feature development
- - [ ] Add to documentation on how to install for different platforms, like ARM and Apple Silicon
  - [ ] Add a Homebrew tap
  - [ ] Add the ability to enable `buildx` caching for Github Actions. This could make the builds faster in future.
  - [ ] Add the ability to specify the platform(s) you'd like to build for using a `buildx` builder. This would be cool to be able to build ARM images using a standard runner. For now, I recommend deploying a custom ARM runner and building on that (it'll also be a lot faster)
