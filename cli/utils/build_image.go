@@ -26,7 +26,7 @@ func BuildImage(params BuildDockerImageParams, imageHash string, dockerClient *c
 	})
 
 	if imageBuildError != nil {
-		print(fmt.Sprintf("ERROR: An error ocurred when trying to build the image: %s\n", imageBuildError))
+		fmt.Printf("ERROR: An error ocurred when trying to build the image: %s\n", imageBuildError)
 		return "", imageBuildError
 	}
 	termFd, isTerm := term.GetFdInfo(os.Stderr)

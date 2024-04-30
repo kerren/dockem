@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"sort"
 
 	"golang.org/x/mod/sumdb/dirhash"
@@ -14,9 +15,9 @@ func HashWatchDirectories(watchDirectories []string) (string, error) {
 		for _, directory := range watchDirectories {
 			directoryHash, err := dirhash.HashDir(directory, "", dirhash.Hash1)
 			if err != nil {
-				print("ERROR: An error ocurred when hashing the watch directories, please ensure they all exist, they are listed as follows:\n")
+				fmt.Print("ERROR: An error ocurred when hashing the watch directories, please ensure they all exist, they are listed as follows:\n")
 				for _, dir := range watchDirectories {
-					print(dir + "\n")
+					fmt.Print(dir + "\n")
 				}
 				return "", err
 			}
