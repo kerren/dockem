@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"regexp"
 	"sort"
 	"testing"
 	"time"
@@ -185,8 +186,9 @@ func TestBuildWithLatestFlag(t *testing.T) {
         t.Errorf("Error building the docker image: %s", err)
     }
 
+    r, _ := regexp.Compile("latest$")
     idx := sort.Search(len(buildLog.outputTags), func(i int) bool {
-        return buildLog.outputTags[i] == "latest"
+        return r.MatchString(buildLog.outputTags[i])
     })
     if idx == len(buildLog.outputTags) {
         t.Errorf("The latest tag should exist in the output tags")
