@@ -32,16 +32,16 @@ curl -s https://raw.githubusercontent.com/kerren/dockem/main/scripts/get_dockem_
 If you're running an AMD64 Linux system and don't want the hassle of figuring things out, you can use the quick install script buy running the following in terminal.
 
 ```shell
-wget https://github.com/kerren/dockem/releases/download/v2.2.0/dockem-v2.2.0-linux-amd64
-chmod 755 dockem-v2.2.0-linux-amd64
-sudo mv ./dockem-v2.2.0-linux-amd64 /usr/local/bin/dockem
+wget https://github.com/kerren/dockem/releases/download/v2.3.0/dockem-v2.3.0-linux-amd64
+chmod 755 dockem-v2.3.0-linux-amd64
+sudo mv ./dockem-v2.3.0-linux-amd64 /usr/local/bin/dockem
 ```
 
 If you're running an ARM64 Linux system, you can run the following,
 ```shell
-wget https://github.com/kerren/dockem/releases/download/v2.2.0/dockem-v2.2.0-linux-arm64
-chmod 755 dockem-v2.2.0-linux-arm64
-sudo mv ./dockem-v2.2.0-linux-arm64 /usr/local/bin/dockem
+wget https://github.com/kerren/dockem/releases/download/v2.3.0/dockem-v2.3.0-linux-arm64
+chmod 755 dockem-v2.3.0-linux-arm64
+sudo mv ./dockem-v2.3.0-linux-arm64 /usr/local/bin/dockem
 ```
 
 ## Usage
