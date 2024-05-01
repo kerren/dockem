@@ -10,6 +10,10 @@ import (
 func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	// I create a string that I append all of the hashes to
 	overallHash := ""
+
+    // Filter out any empty tags
+    params.Tag = RemoveEmptyStringsFromArray(params.Tag)
+
 	buildLog := BuildLog{}
 
 	// Hash the watch files if they exist

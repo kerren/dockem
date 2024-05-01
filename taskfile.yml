@@ -4,7 +4,7 @@ tasks:
   test:
     desc: "Run the test for all packages and subpackages"
     cmds:
-      - | 
+      - |
         cd cli
         go test -count=1 ./...
 
