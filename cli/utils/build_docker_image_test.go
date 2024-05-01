@@ -263,7 +263,7 @@ func TestMainVersion(t *testing.T) {
         Latest:               false,
         MainVersion:          true,
         Registry:             "",
-        Tag:                  []string{""},
+        Tag:                  []string{},
         VersionFile:          versionPath,
         WatchDirectory:       []string{},
         WatchFile:            []string{},
