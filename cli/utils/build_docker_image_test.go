@@ -217,7 +217,7 @@ func TestBuildWithStableTag(t *testing.T) {
         IgnoreBuildDirectory: false,
         ImageName:            imageName,
         Latest:               false,
-        MainVersion:          true,
+        MainVersion:          false,
         Registry:             "",
         Tag:                  []string{"stable"},
         VersionFile:          versionPath,
@@ -230,7 +230,7 @@ func TestBuildWithStableTag(t *testing.T) {
         t.Errorf("Error building the docker image: %s", err)
     }
 
-    r, _ := regexp.Compile("stable-v0\\.1\\.2$")
+    r, _ := regexp.Compile("stable-v0.1.2$")
     idx := sort.Search(len(buildLog.outputTags), func(i int) bool {
         return r.MatchString(buildLog.outputTags[i])
     })
