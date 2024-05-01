@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.3.0](https://github.com/kerren/dockem/compare/v2.2.0...v2.3.0) (2024-05-01)
+
+
+### Features
+
+* **tests:** Add more tests around tagging ([fa7d864](https://github.com/kerren/dockem/commit/fa7d8643315f1cb3f2051aa421efb75eb9f69b62)), closes [#14](https://github.com/kerren/dockem/issues/14)
+
 ## [2.2.0](https://github.com/kerren/dockem/compare/v2.1.0...v2.2.0) (2024-04-30)
 
 

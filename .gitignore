@@ -26,3 +26,4 @@ go.work
 test-dir
 release
 test-dir-*
+.env
