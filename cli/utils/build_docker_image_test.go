@@ -195,3 +195,47 @@ func TestBuildWithLatestFlag(t *testing.T) {
     }
 
 }
+
+func TestBuildWithStableTag(t *testing.T) {
+    // In this test, I'm going to test a build where the stable flag is set.
+    // In that case, it should push the image with the stable tag to the registry.
+    imageName := os.Getenv("TEST_IMAGE_NAME")
+    username := os.Getenv("DOCKER_USERNAME")
+    password := os.Getenv("DOCKER_PASSWORD")
+    if imageName == "" || username == "" || password == "" {
+        t.Fatal("Unable to run test because environment variables are not set")
+    }
+    testDirectory := "../../testing/e2e/base-test-image"
+    directory := testDirectory + "/build"
+    versionPath := testDirectory + "/version.json"
+
+    params := BuildDockerImageParams{
+        Directory:            directory,
+        DockerPassword:       password,
+        DockerUsername:       username,
+        DockerfilePath:       directory + "/Dockerfile",
+        IgnoreBuildDirectory: false,
+        ImageName:            imageName,
+        Latest:               false,
+        MainVersion:          true,
+        Registry:             "",
+        Tag:                  []string{"stable"},
+        VersionFile:          versionPath,
+        WatchDirectory:       []string{},
+        WatchFile:            []string{},
+    }
+
+    buildLog, err := BuildDockerImage(params)
+    if err != nil {
+        t.Errorf("Error building the docker image: %s", err)
+    }
+
+    r, _ := regexp.Compile("stable-v0\\.1\\.2$")
+    idx := sort.Search(len(buildLog.outputTags), func(i int) bool {
+        return r.MatchString(buildLog.outputTags[i])
+    })
+    if idx == len(buildLog.outputTags) {
+        t.Errorf("The stable tag should exist in the output tags")
+    }
+
+}
