@@ -160,8 +160,8 @@ There are a few tweaks and features I'd like to implement to improve the overall
 
  - [x] Create a Github Action that pulls the `dockem` binary
  - [x] Add to documentation on how to install for different platforms, like ARM and Apple Silicon
- - [ ] [WIP] Create end-to-end tests to ensure the core is working, this allows for faster refactoring and feature development
- - [ ] Add more examples to the documentation on how to use the `cli` effectively
+ - [x] Create end-to-end tests to ensure the core is working, this allows for faster refactoring and feature development
+ - [x] Add more examples to the documentation on how to use the `cli` effectively
  - [ ] Add documentation to the `utils` functions
  - [ ] Add a Homebrew tap
  - [ ] Add the ability to enable `buildx` caching for Github Actions. This could make the builds faster in future.
