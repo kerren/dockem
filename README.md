@@ -86,7 +86,85 @@ I've also created a Github action for this, check out [kerren/setup-dockem](http
 ```yaml
     - name: Setup Dockem
       uses: kerren/setup-dockem@v2
+
+    - name: Run Dockem
+      run: dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 ```
+
+## Concepts
+
+In this section, I'll run through the different conecpts to fully explain the `cli` and how it can be used.
+
+<details>
+<summary>The Version File</summary>
+The version file is a `JSON` file that holds a `"version"` key. The version inside the key could be anything, however, it's most likely generated using semantic versioning. When a build is run, this version is extracted from the key and added to the tag.
+
+*NOTE*: The version should not start with a `v` as this is added automatically.
+
+An example of the version file is as follows,
+
+```json
+{
+    "version": "1.0.0"
+}
+```
+</details>
+
+<details>
+<summary>Ignore Build Directory</summary>
+In most cases (I think), you'd want to trigger a build when the build directory hash has changed. However, there are times that you may not want to do that and instead you would like to watch the hash of other directories or files.
+
+In this case, you can use the `--ignore-build-directory` flag to ignore the build directory in the hashing process.
+
+An example of where this may be useful is if you build base images that other Docker images use in the `FROM` statement. In this case, you may only want to trigger a build when the `Dockerfile` changes and not the code that is copied into the base image.
+
+</details>
+
+<details>
+<summary>Main Version</summary>
+The `--main-version` flag is used to specify that this build should be the main version of the repository.
+
+So for instance, if you have an image called `example-org/backend` and you use the `--main-version` flag, it would push the following image to the registry,
+```
+example-org/backend:v1.0.0
+```
+Assuming the version in the version file is `1.0.0`.
+</details>
+
+<details>
+<summary>Latest</summary>
+
+The `--latest` flag is used to specify that this build should be the latest version of the repository.
+
+So for instance, if you have an image called `example-org/backend` and you use the `--latest` flag, it would push the following image to the registry,
+```
+example-org/backend:latest
+```
+
+</details>
+
+<details>
+<summary>Watch File / Watch Directory</summary>
+The hash is generated from the files and/or directories you specify. You can specify as many as you'd like.
+
+When you use the `--watch-file` and/or the `--watch-directory` flags, the build will trigger whenever something in the specified files or directories change.
+
+An example of where this might be useful is if you have a base image that other `Dockerfiles` build from. You may only want to watch the `package-lock.json` file or some other lock file to trigger a build because you don't care about the source but you do care when the base dependencies change.
+
+</details>
+
+<details>
+<summary>Tag</summary>
+
+The `--tag` flag can be used to push to a specific tag on the image. At the moment, the version is appended to the tag before it pushes.
+
+So for instance, if you have an image name `example-org/backend` and you use the `--tag=alpha` flag, it would push the following image to the registry,
+```
+example-org/backend:alpha-v1.0.0
+```
+
+Assuming the version in the version file is `1.0.0`.
+</details>
 
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
