@@ -20,7 +20,7 @@ func CreateDockerClient(username string, password string, registryName string) (
 	}
 
 	// Print the version of the docker client
-	cli.ClientVersion()
+	fmt.Printf("Docker client version: %s\n", cli.ClientVersion())
 
 	if username != "" && password != "" {
 		// See https://docs.docker.com/engine/api/sdk/examples/#pull-an-image-with-authentication for details
@@ -42,5 +42,7 @@ func CreateDockerClient(username string, password string, registryName string) (
 		return cli, registryPushOptions, nil
 	}
 
-	return cli, image.PushOptions{}, nil
+	return cli, image.PushOptions{
+		All: true,
+	}, nil
 }

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.4.0](https://github.com/kerren/dockem/compare/v2.3.0...v2.4.0) (2024-05-05)
+
+
+### Features
+
+* Add the license file ([86c130c](https://github.com/kerren/dockem/commit/86c130c5bbc94dfa293f91f9e2311465b4265d2f))
+
+
+### Bug Fixes
+
+* **auth:** Ensure that the Docker client uses the auth config file if the password has not been specified [#15](https://github.com/kerren/dockem/issues/15) ([135ffab](https://github.com/kerren/dockem/commit/135ffab0246f7c070ee3a57e42116016778d448c))
+
 ## [2.3.0](https://github.com/kerren/dockem/compare/v2.2.0...v2.3.0) (2024-05-01)
 
 
