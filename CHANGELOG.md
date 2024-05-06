@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.5.0](https://github.com/kerren/dockem/compare/v2.4.0...v2.5.0) (2024-05-06)
+
+
+### Features
+
+* **auth:** Use the regclient code to extract the docker host authentication from ~/.docker/config.json [#17](https://github.com/kerren/dockem/issues/17) ([6d8a237](https://github.com/kerren/dockem/commit/6d8a237f404bac19af9c84c5a6450d8d358a0129))
+
 ## [2.4.0](https://github.com/kerren/dockem/compare/v2.3.0...v2.4.0) (2024-05-05)
 
 
