@@ -7,7 +7,7 @@ import (
 )
 
 // HashWatchFiles Hashes the given list of files and returns a combined hash. It will sort the list of watch files before hashing to
-// guarantee consistency.
+// guarantee consistency. If a file does not exist it will throw an error.
 func HashWatchFiles(watchFiles []string) (string, error) {
 
 	if len(watchFiles) == 0 {
