@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 )
 
+// AssertDirectoryExists Asserts that a directory exists at the given path. If not, either exits or returns an error message.
 func AssertDirectoryExists(path string, errorMessage string) {
 
 	if errorMessage == "" {
