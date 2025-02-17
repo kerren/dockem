@@ -5,6 +5,8 @@ import (
 	"github.com/regclient/regclient/config"
 )
 
+// CreateRegclientClient Creates an OCI client and authenticates with the specified registry. It will also update
+// the build log with the specified registry, username and password if they are defined.
 func CreateRegclientClient(registry string, username string, password string, buildLog *BuildLog) *regclient.RegClient {
 	host := config.Host{}
 	customHost := false
