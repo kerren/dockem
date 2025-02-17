@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/client"
 )
 
+// TagAndPushNewImages Tags and pushes a Docker image to multiple tags based on the provided parameters.
 func TagAndPushNewImages(params BuildDockerImageParams, version string, localTag string, dockerClient *client.Client, pushOptions types.ImagePushOptions, buildLog *BuildLog) error {
 	for _, tag := range params.Tag {
 		versionTag := fmt.Sprintf("%s-%s", tag, version)
