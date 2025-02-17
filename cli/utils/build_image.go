@@ -11,6 +11,7 @@ import (
 	"github.com/moby/term"
 )
 
+// BuildImage Builds a Docker image using the provided build context tarball. It will name the image local:imageHash.
 func BuildImage(params BuildDockerImageParams, imageHash string, dockerClient *client.Client, buildLog *BuildLog) (string, error) {
 
 	reader, relativeDockerfilePath, readerErr := TarBuildContext(params, dockerClient, buildLog)
