@@ -9,6 +9,8 @@ import (
 	"github.com/regclient/regclient/types/ref"
 )
 
+// CheckManifestHead Checks if the registry contains an image with the tag specified. If the manifest check fails it
+// will return false. Otherwise, it will return true to indicate that the image does exist with the tag given.
 func CheckManifestHead(tag string, ref ref.Ref, client *regclient.RegClient) bool {
 	mOpts := []regclient.ManifestOpts{}
 	fmt.Printf("Checking for the image hash %s on the registry\n", tag)
