@@ -11,6 +11,8 @@ import (
 	"github.com/moby/term"
 )
 
+// TagAndPushImage Tags and pushes a Docker image to a registry.
+// It will print updates to the console and wait for the stream to complete or fail.
 func TagAndPushImage(fromImage string, toImage string, dockerClient *client.Client, pushOptions types.ImagePushOptions) error {
 
 	tagErr := dockerClient.ImageTag(context.Background(), fromImage, toImage)
