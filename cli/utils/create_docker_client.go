@@ -12,6 +12,8 @@ import (
 	"github.com/regclient/regclient/config"
 )
 
+// CreateDockerClient Creates a Docker client, either with explicit username/password credentials
+// or by loading authentication details from the Docker configuration file.
 func CreateDockerClient(username string, password string, registryName string) (*client.Client, image.PushOptions, error) {
 	if username != "" && password != "" {
 		authConfig := registry.AuthConfig{
