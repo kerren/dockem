@@ -6,6 +6,7 @@ import (
 	"github.com/regclient/regclient/regclient"
 )
 
+// CopyExistingImageTag Copies an existing image tag to new tags or to `latest` or `main version` based on the flags.
 func CopyExistingImageTag(params BuildDockerImageParams, version string, imageNameWithHash string, client *regclient.RegClient, buildLog *BuildLog) error {
 	for _, tag := range params.Tag {
 		tagVersion := fmt.Sprintf("%s-%s", tag, version)
