@@ -7,12 +7,13 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
+// BuildDockerImage Builds a Docker image or reuses an existing one based on content hashing.
 func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	// I create a string that I append all of the hashes to
 	overallHash := ""
 
-    // Filter out any empty tags
-    params.Tag = RemoveEmptyStringsFromArray(params.Tag)
+	// Filter out any empty tags
+	params.Tag = RemoveEmptyStringsFromArray(params.Tag)
 
 	buildLog := BuildLog{}
 
