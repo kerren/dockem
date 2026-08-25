@@ -334,15 +334,15 @@ diffs small and reviewable.
 Phase 2 needs stdout to be clean so JSON can be piped. Today every message is a bare
 `fmt.Printf` to stdout.
 
-- [ ] Add `cli/utils/log.go` exposing `LogInfo(format string, a ...any)`,
+- [x] Add `cli/utils/log.go` exposing `LogInfo(format string, a ...any)`,
       `LogWarn(...)` and `LogError(...)`, all writing to `os.Stderr`.
       `LogWarn`/`LogError` prepend the existing `WARN: ` / `ERROR: ` prefixes.
-- [ ] Replace every `fmt.Printf` / `fmt.Print` in `cli/utils/*.go` with the new helpers.
+- [x] Replace every `fmt.Printf` / `fmt.Print` in `cli/utils/*.go` with the new helpers.
       Keep the wording of each message identical — only the destination changes.
-- [ ] Leave the `panic(err)` in `cli/cmd/build.go` as-is; error propagation is unchanged.
-- [ ] Confirm `jsonmessage.DisplayJSONMessagesStream` calls in `build_image.go` and
+- [x] Leave the `panic(err)` in `cli/cmd/build.go` as-is; error propagation is unchanged.
+- [x] Confirm `jsonmessage.DisplayJSONMessagesStream` calls in `build_image.go` and
       `tag_and_push_image.go` already target `os.Stderr` (they do) — no change needed.
-- [ ] Update the "Conventions" section of `CLAUDE.md` to reference the helpers instead
+- [x] Update the "Conventions" section of `CLAUDE.md` to reference the helpers instead
       of raw `fmt.Printf`.
 
 ### 0.2 Extract the tag-resolution rule into one function

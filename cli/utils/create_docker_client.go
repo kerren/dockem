@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/docker/docker/api/types/image"
@@ -40,12 +39,12 @@ func CreateDockerClient(username string, password string, registryName string) (
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 
 		if err != nil {
-			fmt.Print("ERROR: An error occurred when creating the docker client. Please ensure that the docker daemon is running and that you have the correct permissions to access it.\n")
+			LogError("An error occurred when creating the docker client. Please ensure that the docker daemon is running and that you have the correct permissions to access it.\n")
 			return nil, image.PushOptions{}, err
 		}
 
 		// Print the version of the docker client
-		fmt.Printf("Docker client version: %s\n", cli.ClientVersion())
+		LogInfo("Docker client version: %s\n", cli.ClientVersion())
 		registryPushOptions := image.PushOptions{
 			All: true,
 		}
@@ -60,12 +59,12 @@ func CreateClientWithAuthConfig(authConfig registry.AuthConfig) (*client.Client,
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 
 	if err != nil {
-		fmt.Print("ERROR: An error occurred when creating the docker client. Please ensure that the docker daemon is running and that you have the correct permissions to access it.\n")
+		LogError("An error occurred when creating the docker client. Please ensure that the docker daemon is running and that you have the correct permissions to access it.\n")
 		return nil, image.PushOptions{}, err
 	}
 
 	// Print the version of the docker client
-	fmt.Printf("Docker client version: %s\n", cli.ClientVersion())
+	LogInfo("Docker client version: %s\n", cli.ClientVersion())
 	encodedJSON, err := json.Marshal(authConfig)
 	if err != nil {
 		return nil, image.PushOptions{}, err

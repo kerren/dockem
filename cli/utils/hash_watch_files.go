@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"fmt"
-
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
@@ -14,7 +12,7 @@ func HashWatchFiles(watchFiles []string) (string, error) {
 		if err != nil {
 			print("ERROR: An error ocurred when hashing the watch files, please ensure they all exist, they are listed as follows:\n")
 			for _, file := range watchFiles {
-				fmt.Print(file + "\n")
+				LogInfo("%s", file+"\n")
 			}
 			return "", err
 		}
