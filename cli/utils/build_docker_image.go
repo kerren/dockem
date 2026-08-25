@@ -7,6 +7,20 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
+// hashVersion prefixes every image hash this tool produces. It exists so that
+// a change to the *composition* of the hash - what feeds it, or the order/
+// form in which it does - can reset cache identity deliberately and visibly,
+// rather than as an accidental side effect of some unrelated change landing
+// in the same release.
+//
+// Bump this constant (eg. "dockem-hash-v2" -> "dockem-hash-v3") whenever you
+// change what HashWatchFiles, HashWatchDirectories, HashDirectory or the
+// Dockerfile hashing below feed into overallHash, or the order they're
+// concatenated in. Doing so invalidates every hash tag ever published under
+// the old prefix - see CLAUDE.md's Architecture section and the README's
+// "Cache identity" section for the consequences.
+const hashVersion = "dockem-hash-v2"
+
 // BuildDockerImage returns named results (rather than the usual unnamed
 // (BuildLog, error)) purely so the deferred func below can record the
 // duration on buildLog no matter which of the many return statements below
@@ -19,8 +33,10 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 		buildLog.durationMs = time.Since(startTime).Milliseconds()
 	}()
 
-	// I create a string that I append all of the hashes to
-	overallHash := ""
+	// I create a string that I append all of the hashes to. Seeding it with
+	// hashVersion namespaces every hash this build of dockem produces to that
+	// hash format - see the comment on hashVersion above.
+	overallHash := hashVersion
 
 	// Filter out any empty tags
 	params.Tag = RemoveEmptyStringsFromArray(params.Tag)
