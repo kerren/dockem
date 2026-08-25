@@ -34,8 +34,18 @@ otherwise, build the new image and push it to the specified tag(s).`,
 
 		dockerPassword, _ := cmd.Flags().GetString("docker-password")
 		dockerUsername, _ := cmd.Flags().GetString("docker-username")
+		exclude, _ := cmd.Flags().GetStringArray("exclude")
 		ignoreBuildDirectory, _ := cmd.Flags().GetBool("ignore-build-directory")
+		ignoreFile, _ := cmd.Flags().GetString("ignore-file")
 		latest, _ := cmd.Flags().GetBool("latest")
+		// --respect-dockerignore is opt-in on this release (default false); the
+		// --no-respect-dockerignore counterpart is provided so a pipeline can
+		// pin the old behaviour once the default flips to true in v3.
+		respectDockerignore, _ := cmd.Flags().GetBool("respect-dockerignore")
+		noRespectDockerignore, _ := cmd.Flags().GetBool("no-respect-dockerignore")
+		if noRespectDockerignore {
+			respectDockerignore = false
+		}
 		outputFile, _ := cmd.Flags().GetString("output-file")
 		registry, _ := cmd.Flags().GetString("registry")
 		strictRegistry, _ := cmd.Flags().GetBool("strict-registry")
@@ -50,13 +60,16 @@ otherwise, build the new image and push it to the specified tag(s).`,
 			DockerPassword:       dockerPassword,
 			DockerUsername:       dockerUsername,
 			DockerfilePath:       dockerfilePath,
+			Exclude:              exclude,
 			IgnoreBuildDirectory: ignoreBuildDirectory,
+			IgnoreFile:           ignoreFile,
 			ImageName:            imageName,
 			Latest:               latest,
 			MainVersion:          mainVersion,
 			OutputFile:           outputFile,
 			OutputFormat:         outputFormat,
 			Registry:             registry,
+			RespectDockerignore:  respectDockerignore,
 			StrictRegistry:       strictRegistry,
 			Tag:                  tag,
 			VersionFile:          versionFile,
@@ -114,6 +127,10 @@ func init() {
 	buildCmd.Flags().BoolP("strict-registry", "s", false, "Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.")
 	buildCmd.Flags().String("output-format", "text", "The format to print the build result in, either 'text' (the default, today's human-readable logging) or 'json' (an indented JSON BuildResult on stdout, or --output-file if set). $GITHUB_OUTPUT is always written to when set, regardless of this flag.")
 	buildCmd.Flags().String("output-file", "", "The path of a file to write the --output-format=json build result to, instead of stdout. Ignored when --output-format is not 'json'.")
+	buildCmd.Flags().Bool("respect-dockerignore", false, "Respect the .dockerignore file in the build directory (and any --ignore-file) when hashing the inputs and building the context, excluding matching files from both. Opt-in for now; this default becomes true in v3, which will reset every published hash tag.")
+	buildCmd.Flags().Bool("no-respect-dockerignore", false, "Explicitly do NOT respect the .dockerignore file. This is the default today; it exists so a pipeline can pin the old behaviour once the default flips to true in v3.")
+	buildCmd.Flags().String("ignore-file", "", "The path to an alternative ignore file to use instead of <directory>/.dockerignore. Only consulted when --respect-dockerignore is set.")
+	buildCmd.Flags().StringArray("exclude", []string{}, "Extra .dockerignore-style pattern(s) to exclude from both the input hash and the build context. Repeatable. Always applied, even without --respect-dockerignore.")
 
 	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 

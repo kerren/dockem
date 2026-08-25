@@ -5,18 +5,20 @@ package utils
  * I use this in testing to ensure that the expected outcomes are met.
  */
 type BuildLog struct {
-	customDockerfile bool
-	customHost       bool
-	dockerPassword   string
-	dockerRegistry   string
-	dockerUsername   string
-	durationMs       int64
-	headCheckError   error
-	headCheckSkipped bool
-	hashExists       bool
-	hashedImageName  string
-	imageHash        string
-	localTag         string
-	outputTags       []string
-	version          string
+	customDockerfile    bool
+	customHost          bool
+	dockerPassword      string
+	dockerRegistry      string
+	dockerUsername      string
+	durationMs          int64
+	excludePatterns     []string
+	headCheckError      error
+	headCheckSkipped    bool
+	hashExists          bool
+	hashedImageName     string
+	imageHash           string
+	localTag            string
+	outputTags          []string
+	respectDockerignore bool
+	version             string
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/docker/docker/pkg/archive"
 )
 
-func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client, buildLog *BuildLog) (io.Reader, string, error) {
+func TarBuildContext(params BuildDockerImageParams, excludePatterns []string, dockerClient *client.Client, buildLog *BuildLog) (io.Reader, string, error) {
 
 	absDirectoryPath, absDirectoryPathError := filepath.Abs(params.Directory)
 	if absDirectoryPathError != nil {
@@ -59,7 +59,22 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client,
 		}
 	}
 
-	reader, tarErr := archive.TarWithOptions(absDirectoryPath, &archive.TarOptions{})
+	// The tar is excluded with the SAME pattern list that HashDirectory used,
+	// so the files streamed to the daemon are exactly the files that fed the
+	// hash. Two trailing negations guarantee the Dockerfile we build from and
+	// the .dockerignore survive even a broad rule such as `Dockerfile*` or `*`.
+	// In the out-of-context case relativeDockerfilePath is the temporary
+	// `Dockerfile.` copy created above, so this is precisely what stops such a
+	// rule from deleting it and breaking the build. When there are no patterns
+	// we pass the options untouched, so non-adopters get today's tar exactly.
+	tarOptions := &archive.TarOptions{}
+	if len(excludePatterns) > 0 {
+		patterns := append([]string{}, excludePatterns...)
+		patterns = append(patterns, "!"+relativeDockerfilePath, "!.dockerignore")
+		tarOptions.ExcludePatterns = patterns
+	}
+
+	reader, tarErr := archive.TarWithOptions(absDirectoryPath, tarOptions)
 	if tarErr != nil {
 		LogError("An error ocurred when trying to archive the directory to send to the builder: %s\n", tarErr)
 		return nil, "", tarErr
