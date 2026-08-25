@@ -421,7 +421,7 @@ immediately more useful.
 
 ### 2.1 The result type
 
-- [ ] Add `cli/utils/build_result.go` with an exported `BuildResult`:
+- [x] Add `cli/utils/build_result.go` with an exported `BuildResult`:
 
   ```go
   type BuildResult struct {
@@ -437,40 +437,40 @@ immediately more useful.
   }
   ```
 
-- [ ] Add `func (b BuildLog) Result() BuildResult` to map the internal log onto it.
-- [ ] Have `BuildDockerImage` return `(BuildLog, error)` as it does today — `cmd` calls
+- [x] Add `func (b BuildLog) Result() BuildResult` to map the internal log onto it.
+- [x] Have `BuildDockerImage` return `(BuildLog, error)` as it does today — `cmd` calls
       `.Result()`. Keeps the test surface untouched.
 
 ### 2.2 Emitters
 
-- [ ] Add `cli/utils/write_build_output.go` with
+- [x] Add `cli/utils/write_build_output.go` with
       `WriteBuildOutput(result BuildResult, format string, path string) error`.
-- [ ] `format=json` → marshal indented to **stdout** (or to `path` if given).
-- [ ] `format=text` (default) → today's behaviour, nothing extra written.
-- [ ] Add `cli/utils/write_github_output.go` with `WriteGitHubOutput(result BuildResult) error`:
-  - [ ] No-op when `$GITHUB_OUTPUT` is unset.
-  - [ ] Append `hash=`, `cache-hit=`, `image=`, `version=`, `primary-tag=`,
+- [x] `format=json` → marshal indented to **stdout** (or to `path` if given).
+- [x] `format=text` (default) → today's behaviour, nothing extra written.
+- [x] Add `cli/utils/write_github_output.go` with `WriteGitHubOutput(result BuildResult) error`:
+  - [x] No-op when `$GITHUB_OUTPUT` is unset.
+  - [x] Append `hash=`, `cache-hit=`, `image=`, `version=`, `primary-tag=`,
         `tags=` (comma-separated), `platforms=` (comma-separated).
-  - [ ] Open with `os.OpenFile(..., os.O_APPEND|os.O_WRONLY, 0644)` — never truncate,
+  - [x] Open with `os.OpenFile(..., os.O_APPEND|os.O_WRONLY, 0644)` — never truncate,
         other steps write to the same file.
-  - [ ] Use the heredoc form (`key<<EOF`) for any value that could contain a newline.
+  - [x] Use the heredoc form (`key<<EOF`) for any value that could contain a newline.
 
 ### 2.3 Wiring
 
-- [ ] Add `OutputFormat string` and `OutputFile string` to `BuildDockerImageParams`.
-- [ ] Add `--output-format` (`text`|`json`, default `text`) and `--output-file` flags to
+- [x] Add `OutputFormat string` and `OutputFile string` to `BuildDockerImageParams`.
+- [x] Add `--output-format` (`text`|`json`, default `text`) and `--output-file` flags to
       `cli/cmd/build.go`; validate `--output-format` is one of the two.
-- [ ] Call `WriteBuildOutput` and `WriteGitHubOutput` from `cmd/build.go` after
+- [x] Call `WriteBuildOutput` and `WriteGitHubOutput` from `cmd/build.go` after
       `BuildDockerImage` returns successfully.
-- [ ] On failure, still emit the partial result when `--output-format=json` so callers
+- [x] On failure, still emit the partial result when `--output-format=json` so callers
       can see the hash that was computed before the error.
-- [ ] Add `cli/utils/write_github_output_test.go` — point `$GITHUB_OUTPUT` at a temp file
+- [x] Add `cli/utils/write_github_output_test.go` — point `$GITHUB_OUTPUT` at a temp file
       and assert the exact key/value lines. Pure unit test, no registry.
 - [ ] Assert in an existing e2e test that `--output-format=json` produces parseable JSON
-      on stdout with nothing else mixed in (depends on Phase 0.1).
-- [ ] Document both flags and the full `$GITHUB_OUTPUT` key list in the README, with a
+      on stdout with nothing else mixed in (depends on Phase 0.1). (deferred: needs a real registry)
+- [x] Document both flags and the full `$GITHUB_OUTPUT` key list in the README, with a
       worked GitHub Actions example that consumes `cache-hit` and `primary-tag`.
-- [ ] Open a follow-up issue on `kerren/setup-dockem` to surface these as action outputs.
+- [ ] Open a follow-up issue on `kerren/setup-dockem` to surface these as action outputs. (deferred: external repo)
 
 ---
 

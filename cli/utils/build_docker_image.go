@@ -1,18 +1,31 @@
 package utils
 
 import (
+	"time"
+
 	"github.com/regclient/regclient/types/ref"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
-func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
+// BuildDockerImage returns named results (rather than the usual unnamed
+// (BuildLog, error)) purely so the deferred func below can record the
+// duration on buildLog no matter which of the many return statements below
+// is hit - including the early-return error paths, so BuildResult.DurationMs
+// (see build_result.go) reflects a failed run's duration too, not just a
+// successful one.
+func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err error) {
+	startTime := time.Now()
+	defer func() {
+		buildLog.durationMs = time.Since(startTime).Milliseconds()
+	}()
+
 	// I create a string that I append all of the hashes to
 	overallHash := ""
 
     // Filter out any empty tags
     params.Tag = RemoveEmptyStringsFromArray(params.Tag)
 
-	buildLog := BuildLog{}
+	buildLog = BuildLog{}
 
 	// Hash the watch files if they exist
 	hashWatchFileResult, hashWatchFileError := HashWatchFiles(params.WatchFile)

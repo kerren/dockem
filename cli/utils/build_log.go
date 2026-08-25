@@ -10,6 +10,7 @@ type BuildLog struct {
 	dockerPassword   string
 	dockerRegistry   string
 	dockerUsername   string
+	durationMs       int64
 	headCheckError   error
 	headCheckSkipped bool
 	hashExists       bool

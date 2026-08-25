@@ -28,11 +28,15 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		// 4. Ensure that the version-file flag is set and the file exists
 		versionFile, _ := cmd.Flags().GetString("version-file")
 		utils.AssertFileExists(versionFile, "ERROR: The file '%s' does not exist. Please specify the path to the file that holds the version you would like to use in the build. This is a JSON file that must have the 'version' key.")
+		// 5. Ensure that the output-format flag is one of the supported formats
+		outputFormat, _ := cmd.Flags().GetString("output-format")
+		utils.AssertOneOf(outputFormat, []string{"text", "json"}, "ERROR: The output-format '%s' is not valid. Please specify either 'text' or 'json'.")
 
 		dockerPassword, _ := cmd.Flags().GetString("docker-password")
 		dockerUsername, _ := cmd.Flags().GetString("docker-username")
 		ignoreBuildDirectory, _ := cmd.Flags().GetBool("ignore-build-directory")
 		latest, _ := cmd.Flags().GetBool("latest")
+		outputFile, _ := cmd.Flags().GetString("output-file")
 		registry, _ := cmd.Flags().GetString("registry")
 		strictRegistry, _ := cmd.Flags().GetBool("strict-registry")
 		tag, _ := cmd.Flags().GetStringArray("tag")
@@ -50,6 +54,8 @@ otherwise, build the new image and push it to the specified tag(s).`,
 			ImageName:            imageName,
 			Latest:               latest,
 			MainVersion:          mainVersion,
+			OutputFile:           outputFile,
+			OutputFormat:         outputFormat,
 			Registry:             registry,
 			StrictRegistry:       strictRegistry,
 			Tag:                  tag,
@@ -59,10 +65,32 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		}
 
 		// Finally, we push this off to the build docker image function
-		_, err := utils.BuildDockerImage(buildDockerImageParams)
-		if err != nil {
-			fmt.Print("\n\n")
-			panic(err)
+		buildLog, buildErr := utils.BuildDockerImage(buildDockerImageParams)
+		buildResult := buildLog.Result()
+
+		// Emit the (possibly partial) machine-readable result before acting on
+		// buildErr, so that --output-format=json still reports the hash - and
+		// anything else that was computed - even when the build itself failed.
+		// WriteBuildOutput is a no-op for the default text format, so it is
+		// always safe to call unconditionally here.
+		writeErr := utils.WriteBuildOutput(buildResult, outputFormat, outputFile)
+
+		if buildErr != nil {
+			// The blank line before the panic trace is only for the human-
+			// readable text format - --output-format=json must have nothing
+			// but JSON on stdout, which the panic below writes to stderr.
+			if outputFormat != "json" {
+				fmt.Print("\n\n")
+			}
+			panic(buildErr)
+		}
+
+		if writeErr != nil {
+			panic(writeErr)
+		}
+
+		if githubOutputErr := utils.WriteGitHubOutput(buildResult); githubOutputErr != nil {
+			panic(githubOutputErr)
 		}
 	},
 }
@@ -84,12 +112,16 @@ func init() {
 	buildCmd.Flags().BoolP("main-version", "m", false, "Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.")
 	buildCmd.Flags().BoolP("ignore-build-directory", "I", false, "Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.")
 	buildCmd.Flags().BoolP("strict-registry", "s", false, "Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.")
+	buildCmd.Flags().String("output-format", "text", "The format to print the build result in, either 'text' (the default, today's human-readable logging) or 'json' (an indented JSON BuildResult on stdout, or --output-file if set). $GITHUB_OUTPUT is always written to when set, regardless of this flag.")
+	buildCmd.Flags().String("output-file", "", "The path of a file to write the --output-format=json build result to, instead of stdout. Ignored when --output-format is not 'json'.")
 
 	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 
 $ dockem build --directory=./apps/backend --watch-directory=./libs/shared --dockerfile-path=./apps/backend/Dockerfile --image-name=my-repo/backend --tag=dev --latest
 
 $ dockem build --image-name=my-repo/backend --registry=eu.reg.io --docker-username=uname --docker-password=1234 --tag=alpha --tag=test
+
+$ dockem build --image-name=my-repo/backend --tag=stable --output-format=json | jq -r '.primaryTag'
 
 `
 }

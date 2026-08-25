@@ -9,6 +9,8 @@ type BuildDockerImageParams struct {
 	ImageName            string
 	Latest               bool
 	MainVersion          bool
+	OutputFile           string
+	OutputFormat         string
 	Registry             string
 	StrictRegistry       bool
 	Tag                  []string
