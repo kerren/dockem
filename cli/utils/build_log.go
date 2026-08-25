@@ -10,6 +10,8 @@ type BuildLog struct {
 	dockerPassword   string
 	dockerRegistry   string
 	dockerUsername   string
+	headCheckError   error
+	headCheckSkipped bool
 	hashExists       bool
 	hashedImageName  string
 	imageHash        string

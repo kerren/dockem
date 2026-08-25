@@ -383,28 +383,28 @@ fails too, after the build has already been paid for.
 `regclient/types/errs` (already available in v0.6.0) provides `ErrNotFound`,
 `ErrHTTPUnauthorized`, `ErrHTTPRateLimit` and `ErrHTTPStatus`.
 
-- [ ] Change the signature to
+- [x] Change the signature to
       `CheckManifestHead(tag string, ref ref.Ref, client *regclient.RegClient) (bool, error)`.
-- [ ] Classify with `errors.Is`:
-  - [ ] `errs.ErrNotFound` → `(false, nil)`. This is the normal "build it" path.
-  - [ ] `errs.ErrHTTPUnauthorized` → `(false, err)` and log a loud `ERROR:` telling the
+- [x] Classify with `errors.Is`:
+  - [x] `errs.ErrNotFound` → `(false, nil)`. This is the normal "build it" path.
+  - [x] `errs.ErrHTTPUnauthorized` → `(false, err)` and log a loud `ERROR:` telling the
         user to check `--docker-username` / `--docker-password` or their `docker login`.
-  - [ ] `errs.ErrHTTPRateLimit` → `(false, err)` with a message about registry limits.
-  - [ ] Anything else → `(false, err)` with the raw error.
-- [ ] Delete the `strings.Contains(manifestError.Error(), "failed to request manifest head")`
+  - [x] `errs.ErrHTTPRateLimit` → `(false, err)` with a message about registry limits.
+  - [x] Anything else → `(false, err)` with the raw error.
+- [x] Delete the `strings.Contains(manifestError.Error(), "failed to request manifest head")`
       string-matching heuristic — it is replaced by the typed checks.
-- [ ] Add a `StrictRegistry bool` field to `BuildDockerImageParams`.
-- [ ] Add the `--strict-registry` flag to `cli/cmd/build.go` (default `false`).
-- [ ] In `BuildDockerImage`, on a non-nil error from `CheckManifestHead`:
-  - [ ] If `params.StrictRegistry` → return the error and abort.
-  - [ ] Otherwise → log `WARN: … the build will continue, but this should be investigated`
+- [x] Add a `StrictRegistry bool` field to `BuildDockerImageParams`.
+- [x] Add the `--strict-registry` flag to `cli/cmd/build.go` (default `false`).
+- [x] In `BuildDockerImage`, on a non-nil error from `CheckManifestHead`:
+  - [x] If `params.StrictRegistry` → return the error and abort.
+  - [x] Otherwise → log `WARN: … the build will continue, but this should be investigated`
         and proceed to build (preserves today's behaviour by default).
-- [ ] Record the outcome on `BuildLog`: add `headCheckError error` and
+- [x] Record the outcome on `BuildLog`: add `headCheckError error` and
       `headCheckSkipped bool` so tests can assert on the branch taken.
-- [ ] Add unit tests in `cli/utils/check_manifest_head_test.go` using a stub registry
+- [x] Add unit tests in `cli/utils/check_manifest_head_test.go` using a stub registry
       (`httptest.Server` returning 404 / 401 / 429 / 500) to confirm the classification.
       These need no real registry credentials.
-- [ ] Document `--strict-registry` in the README flag table.
+- [x] Document `--strict-registry` in the README flag table.
 
 ---
 

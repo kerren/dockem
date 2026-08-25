@@ -78,8 +78,23 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 
 	// Now we do a HEAD request to see if the image exists on the registry already. This is
 	// really good for registries that have a limit on image pulls per day.
-	exists := CheckManifestHead(imageHash, r, client)
+	exists, headCheckError := CheckManifestHead(imageHash, r, client)
 	buildLog.hashExists = exists
+	buildLog.headCheckError = headCheckError
+
+	// A non-nil error here means the check itself failed - eg. an auth failure or a
+	// rate limit - as opposed to a clean "the hash does not exist yet". exists is
+	// always false alongside such an error. By default we log a warning and fall
+	// through to the build below exactly as before this check existed; passing
+	// --strict-registry makes this fatal instead, since building and pushing after
+	// an unreliable check can silently mask an auth problem until the push fails too.
+	if headCheckError != nil {
+		if params.StrictRegistry {
+			return buildLog, headCheckError
+		}
+		buildLog.headCheckSkipped = true
+		LogWarn("Unable to reliably check whether the image hash %s exists on the registry: %s -- the build will continue, but this should be investigated\n", imageHash, headCheckError)
+	}
 
 	if exists {
 		LogInfo("The image hash %s already exists on the registry, we can now copy this to the other tags!\n", imageHash)

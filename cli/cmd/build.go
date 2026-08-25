@@ -34,6 +34,7 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		ignoreBuildDirectory, _ := cmd.Flags().GetBool("ignore-build-directory")
 		latest, _ := cmd.Flags().GetBool("latest")
 		registry, _ := cmd.Flags().GetString("registry")
+		strictRegistry, _ := cmd.Flags().GetBool("strict-registry")
 		tag, _ := cmd.Flags().GetStringArray("tag")
 		watchDirectory, _ := cmd.Flags().GetStringArray("watch-directory")
 		watchFile, _ := cmd.Flags().GetStringArray("watch-file")
@@ -50,6 +51,7 @@ otherwise, build the new image and push it to the specified tag(s).`,
 			Latest:               latest,
 			MainVersion:          mainVersion,
 			Registry:             registry,
+			StrictRegistry:       strictRegistry,
 			Tag:                  tag,
 			VersionFile:          versionFile,
 			WatchDirectory:       watchDirectory,
@@ -81,6 +83,7 @@ func init() {
 	buildCmd.Flags().StringP("docker-password", "p", "", "The password that should be used to authenticate the docker client. Ignore if you have already logged in.")
 	buildCmd.Flags().BoolP("main-version", "m", false, "Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.")
 	buildCmd.Flags().BoolP("ignore-build-directory", "I", false, "Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.")
+	buildCmd.Flags().BoolP("strict-registry", "s", false, "Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.")
 
 	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 
