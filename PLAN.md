@@ -50,6 +50,280 @@ available before the cache reset lands. Phases 3 and 4 ship together as `v3.0.0`
 
 ---
 
+## The branch ladder
+
+The phases below describe *what* to build. This section describes *how to land it* —
+a stack of small branches, each rung sitting on the one below, so that no single pull
+request is large enough to be reviewed badly.
+
+All branches use the `feature/` prefix so the git flow tooling picks them up. The base
+of the stack is `develop`; releases merge `develop` into `main` and tag, as usual.
+
+```
+  develop
+     │
+     ├──▶  RUNG 1   feature/log-helpers
+     │        │                                   Phase 0.1
+     │        │
+     │        ├──▶  RUNG 2   feature/resolve-target-tags
+     │        │                                   Phase 0.2
+     │        │
+     │        └──▶  RUNG 3   feature/manifest-head-errors
+     │                 │                          Phase 1
+     │                 │
+     │                 └──▶  RUNG 4   feature/build-result
+     │                                            Phase 2
+     ▼
+  ═══════  RELEASE  v2.6.0  ═══════════════════════════════════
+     │
+     ├──▶  RUNG 5   feature/dockerignore-hashing
+     │        │                                   Phase 3.1 – 3.3
+     │        │
+     │        └──▶  RUNG 6   feature/dockerignore-default
+     │                 │                          Phase 3.4 – 3.5
+     │                 │
+     │                 └──▶  RUNG 7   feature/buildx-detect
+     │                          │                 Phase 4.2, 4.5
+     │                          │
+     │                          └──▶  RUNG 8   feature/buildx-build
+     │                                   │        Phase 4.3, 4.4, 4.6
+     │                                   │
+     │                                   └──▶  RUNG 9   feature/buildx-cache
+     ▼                                                   Phase 4.7
+  ═══════  RELEASE  v3.0.0  ═══════════════════════════════════
+```
+
+Rungs 2 and 3 are the only pair that can be worked in parallel — they both sit on
+rung 1 but touch disjoint files. Everything else is strictly sequential.
+
+### Rung summary
+
+| # | Branch | Base | Phase | Breaking | Size |
+|---|---|---|---|---|---|
+| 1 | `feature/log-helpers` | `develop` | 0.1 | No | Wide, shallow |
+| 2 | `feature/resolve-target-tags` | rung 1 | 0.2 | No | Small |
+| 3 | `feature/manifest-head-errors` | rung 1 | 1 | No | Small |
+| 4 | `feature/build-result` | rung 3 | 2 | No | Medium |
+| — | **Release `v2.6.0`** | `develop` → `main` | — | No | — |
+| 5 | `feature/dockerignore-hashing` | `develop` | 3.1 – 3.3 | No (opt-in) | Medium |
+| 6 | `feature/dockerignore-default` | rung 5 | 3.4 – 3.5 | **Yes** | Small |
+| 7 | `feature/buildx-detect` | rung 6 | 4.2, 4.5 | No | Medium |
+| 8 | `feature/buildx-build` | rung 7 | 4.3, 4.4, 4.6 | **Yes** | Large |
+| 9 | `feature/buildx-cache` | rung 8 | 4.7 | No | Small |
+| — | **Release `v3.0.0`** | `develop` → `main` | — | **Yes** | — |
+
+---
+
+### Rung 1 — `feature/log-helpers`
+
+**Base:** `develop` · **Covers:** Phase 0.1 · `feat(refactor):`
+
+Introduce `cli/utils/log.go` and mechanically replace every `fmt.Printf` / `fmt.Print`
+in `cli/utils/` with `LogInfo` / `LogWarn` / `LogError`, all writing to stderr.
+
+- **Why first:** rung 4 needs a clean stdout for JSON, and this touches nearly every
+  file in `utils/`. Landing it alone means it never collides with a substantive change.
+- **Review focus:** that no message wording changed. A reviewer should be able to read
+  the diff as a pure destination swap.
+- **Exit criteria:** `task test` green; `dockem build … 1>/dev/null` still shows all
+  progress output.
+- **Revert risk:** trivial, no behaviour depends on it yet.
+
+### Rung 2 — `feature/resolve-target-tags`
+
+**Base:** rung 1 · **Covers:** Phase 0.2 · `feat(refactor):`
+
+Add `ResolveTargetTags` and rewrite `CopyExistingImageTag` and `TagAndPushNewImages`
+to consume it.
+
+- **Why here:** rung 8 needs the resolved tag list *before* the build starts, because
+  `buildx build --push` takes every `-t` in one invocation. Doing it now, while the two
+  existing implementations are still the only callers, means the refactor can be proven
+  correct against the current e2e suite before buildx complicates it.
+- **Review focus:** the four branches of the tag rule, and that `buildLog.outputTags`
+  ordering is byte-identical to before — the existing e2e assertions depend on it.
+- **Exit criteria:** new pure unit tests pass with no credentials; the full e2e suite
+  passes unchanged, with no edits to `build_docker_image_test.go`.
+- **Revert risk:** low, but this is the rung most likely to surface a latent
+  behavioural difference between the copy path and the push path. If it does, that is a
+  bug find, not a blocker — fix it here.
+
+### Rung 3 — `feature/manifest-head-errors`
+
+**Base:** rung 1 · **Covers:** Phase 1 · `fix(registry):`
+
+Return `(bool, error)` from `CheckManifestHead`, classify with `errors.Is` against
+`errs.ErrNotFound` / `ErrHTTPUnauthorized` / `ErrHTTPRateLimit`, and add
+`--strict-registry`.
+
+- **Parallel with rung 2.** Disjoint files. Whichever lands second rebases onto the first.
+- **Review focus:** that the default path is behaviourally unchanged — an unauthenticated
+  or flaky registry must still fall through to a build unless `--strict-registry` is set.
+  This rung must not change what happens today for anyone who does not opt in.
+- **Exit criteria:** `httptest` unit tests cover 404 / 401 / 429 / 500 and need no real
+  registry; e2e suite unchanged.
+- **Revert risk:** low. The signature change is contained to one caller.
+
+### Rung 4 — `feature/build-result`
+
+**Base:** rung 3 · **Covers:** Phase 2 · `feat(output):`
+
+`BuildResult`, `WriteBuildOutput`, `WriteGitHubOutput`, and the `--output-format` /
+`--output-file` flags.
+
+- **Why on rung 3:** both touch `BuildLog`, `BuildDockerImageParams`, `cmd/build.go` and
+  `build_docker_image.go`. Stacking avoids a conflict-heavy merge.
+- **Review focus:** that `--output-format=json` puts *only* JSON on stdout — this is the
+  contract downstream pipelines depend on, and it is only true because of rung 1. Also
+  that `$GITHUB_OUTPUT` is opened append-only; truncating it would destroy other steps'
+  output.
+- **Exit criteria:** `dockem build --output-format=json | jq .` succeeds; a temp-file
+  `$GITHUB_OUTPUT` test asserts exact key/value lines.
+- **Revert risk:** low. Purely additive; the default `text` format is today's behaviour.
+- **Follow-up:** open the issue on `kerren/setup-dockem` to expose these as action
+  outputs once this is released.
+
+---
+
+### Release `v2.6.0`
+
+Merge `develop` → `main`, tag, `task release`. Everything to this point is additive and
+no hash changes, so existing users upgrade with no cache impact. Getting the output
+contract published *before* the cache reset means pipelines can adopt `cache-hit` and
+`primary-tag` while their caches are still warm.
+
+---
+
+### Rung 5 — `feature/dockerignore-hashing`
+
+**Base:** `develop` (post-`v2.6.0`) · **Covers:** Phase 3.1 – 3.3 · `feat(hash):`
+
+`ReadDockerignore`, `HashDirectory`, the `ExcludePatterns` wiring in `TarBuildContext`,
+and the `--respect-dockerignore` / `--ignore-file` / `--exclude` flags — with
+`--respect-dockerignore` defaulting to **`false`**.
+
+- **Deliberately opt-in on this rung.** Shipping the capability with the old default
+  keeps this branch non-breaking and independently mergeable, and it lets the new hashing
+  path be exercised against a real registry before it becomes mandatory.
+- **Review focus:** that the tar and the hash derive from the *same* pattern list. If they
+  diverge, dockem builds something other than what it hashed, which is the worst failure
+  this tool can have. Also the two carve-outs: `Dockerfile` and `.dockerignore` stay in
+  the hash regardless of patterns, and the temporary `Dockerfile.` written for the
+  out-of-context case must survive a `Dockerfile*` pattern.
+- **Exit criteria:** new `t.TempDir()` unit tests pass with no credentials; with the flag
+  off, hashes are bit-identical to `v2.6.0`.
+- **Revert risk:** low while the default is off.
+
+### Rung 6 — `feature/dockerignore-default`
+
+**Base:** rung 5 · **Covers:** Phase 3.4 – 3.5 · `feat(hash)!:`
+
+Flip `--respect-dockerignore` to default `true`, add the `dockem-hash-v2` prefix
+constant, add the `testing/e2e/dockerignore-test-image/` fixture, and write the README
+cache-identity section.
+
+- **This is the cache reset.** Small diff, large consequence — which is exactly why it
+  is its own rung. A reviewer looking at three lines and a fixture can reason about
+  "every published hash tag is now unreachable" far better than they could inside
+  rung 5's diff.
+- **Review focus:** the breaking-change note. Commit must carry `!` and a
+  `BREAKING CHANGE:` footer so `commit-and-tag-version` picks up the major bump.
+- **Exit criteria:** e2e fixture writes a random file into an ignored directory and the
+  hash still hits the copy path across runs.
+- **Revert risk:** the flag default is a one-line revert, but any hash tag published
+  from this rung onward is orphaned by reverting. Do not release this rung and then
+  reverse it.
+
+### Rung 7 — `feature/buildx-detect`
+
+**Base:** rung 6 · **Covers:** Phase 4.2, 4.5 · `feat(buildx):`
+
+`DetectBuildx`, the `--platform` / `--builder` flags, builder resolution logic, and
+`TempDockerConfig` for subprocess credentials. **No build path yet** — `--builder`
+resolves and logs its decision, then falls through to the classic builder.
+
+- **Why split from rung 8:** credential handling deserves its own review. Writing a
+  `config.json` containing a password to disk is the highest-risk code in this cycle and
+  should not be buried inside a large build-path diff.
+- **Review focus:** the temp config directory is `0600`, is always removed via `defer`
+  including on failure, `DOCKER_CONFIG` is set on the subprocess environment only and
+  never exported into the parent, and the password reaches neither `BuildLog` nor the
+  rung 4 JSON output. Also: multi-platform with no buildx must **error**, not silently
+  fall back — a single-arch image published under a multi-arch-looking tag is worse than
+  a failed build.
+- **Exit criteria:** unit test for the error case; e2e suite unchanged, since no build
+  behaviour has changed yet.
+- **Revert risk:** low, nothing depends on it yet.
+
+### Rung 8 — `feature/buildx-build`
+
+**Base:** rung 7 · **Covers:** Phase 4.3, 4.4, 4.6 · `feat(buildx)!:`
+
+`BuildImageBuildx`, the platform list folded into `overallHash`, and the manifest-list
+copy verification.
+
+- **The largest rung, and unavoidably so** — the build path and its hash input cannot be
+  landed separately without an intermediate state where multi-arch builds are published
+  under a hash that ignores the platform list. That state would poison the cache.
+- **Review focus:** platforms sorted and joined before hashing, and nothing appended when
+  `--platform` is unset so non-adopters see no extra invalidation. Then the buildx path
+  bypassing `TagAndPushImage` / `TagAndPushNewImages` entirely — confirm every tag rung 2
+  resolves actually reaches the registry. Finally 4.6: prove regclient's `ImageCopy`
+  copies an image *index*, not one manifest. That is the single assumption which, if
+  wrong, silently publishes a broken multi-arch tag.
+- **Exit criteria:** two-platform e2e build; re-run hits the hash; `ManifestGet` on the
+  copied tag resolves for both platforms; `--builder=docker` still exercises the classic
+  path unchanged.
+- **Revert risk:** high. This changes both what is built and how the cache is keyed. Do
+  not stack anything but rung 9 on it before it has been exercised against a real
+  multi-arch registry.
+
+### Rung 9 — `feature/buildx-cache`
+
+**Base:** rung 8 · **Covers:** Phase 4.7 · `feat(buildx):`
+
+`--cache-from` / `--cache-to`, passed through verbatim.
+
+- **Why last:** it is pure passthrough and worth nothing until rung 8 works. Splitting it
+  off keeps rung 8's diff focused on correctness rather than ergonomics.
+- **Review focus:** that these are documented as affecting build *speed* only and are
+  deliberately excluded from the hash.
+- **Exit criteria:** a GitHub Actions run using `type=gha` completes and reuses cache on
+  a second run.
+- **Revert risk:** trivial.
+
+---
+
+### Release `v3.0.0`
+
+Merge `develop` → `main`, `task release-major`. Release notes must lead with the two
+breaking changes:
+
+1. Every previously published hash tag is invalidated. The first v3 build of each image
+   is a full rebuild.
+2. `docker buildx` is now required for multi-platform builds; `--builder=docker`
+   preserves the classic single-platform path.
+
+---
+
+### Ladder discipline
+
+- **Rebase, never merge, within the stack.** When a lower rung changes after review,
+  rebase every rung above it. Merging `develop` into a mid-stack branch makes the
+  diffs unreadable for everyone above.
+- **One rung in review at a time**, except the rung 2 / rung 3 pair. Reviewing a stack
+  concurrently means re-reviewing after every rebase.
+- **A rung must be green on its own.** `task test` passes at every rung, not just at the
+  top of the stack — otherwise a bisect through this range is worthless.
+- **If a rung is rejected**, the rungs above it rebase onto its base and continue. This
+  is why rung 5 ships opt-in and rung 6 flips the default: if the ordering has to change,
+  only rung 6 is at risk, and it is three lines.
+- **Do not batch rungs into one pull request to save time.** The stack exists because
+  rung 8 is genuinely difficult to review, and the only way to make it reviewable is for
+  everything mechanical to already be behind it.
+
+---
+
 ## Phase 0 — Groundwork
 
 Two refactors that Phases 2 and 4 both depend on. Doing them first keeps the later
