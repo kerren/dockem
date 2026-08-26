@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/regclient/regclient/types/ref"
@@ -118,6 +120,16 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 	}
 	overallHash += dockerfileHash
 
+	// Fold the requested platform list into the hash, immediately after the
+	// Dockerfile hash. The same inputs built for a different set of target
+	// architectures are a *different required output*, so the platform list is
+	// part of the cache identity: without this, dockem would keep copying, say,
+	// a linux/amd64 image forward even after the caller started asking for
+	// linux/amd64,linux/arm64. hashPlatforms appends nothing when --platform is
+	// unset, so single-platform users who never adopt the flag see no extra
+	// invalidation beyond the .dockerignore reset - see its comment below.
+	overallHash += hashPlatforms(params.Platform)
+
 	// We now have the hash of all of the different files combined into one (unique) string. We
 	// can now hash this string to create a unique hash for the image.
 	imageHash := HashString(overallHash)
@@ -179,45 +191,75 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 		// We need to build the image and then we push it to the registry
 		LogInfo("The image hash %s does not exist on the registry, we will now build the image and push it to the registry\n", imageHash)
 
-		dockerClient, pushOptions, err := CreateDockerClient(params.DockerUsername, params.DockerPassword, params.Registry)
-		if err != nil {
-			return buildLog, err
-		}
-		defer dockerClient.Close()
-
-		// The buildx build path is not wired up on this rung yet, so even when
-		// the builder resolved to buildx we still build through the classic
-		// daemon. Say so plainly rather than letting the earlier "resolved to
-		// buildx" line imply a buildx build actually happened.
+		// Two build backends, chosen by the builder resolved above.
+		//
+		// buildx builds every requested platform and pushes ALL tags - the hash
+		// tag and every resolved target tag - in a single `docker buildx build
+		// --push`. It therefore resolves the full tag list up front (via
+		// ResolveTargetTags) and does its own tag logging / outputTags
+		// recording; TagAndPushImage and TagAndPushNewImages are NOT called on
+		// this path.
+		//
+		// The classic daemon builder below can only ever produce a single-arch
+		// image (ResolveBuilder guarantees we never reach it with more than one
+		// platform), so it builds to a local:<hash> tag, pushes the hash tag,
+		// then pushes each target tag one at a time - exactly as before.
 		if buildLog.builder == "buildx" {
-			LogInfo("The buildx build path is not enabled yet; building with the classic daemon builder for now.\n")
-		}
+			buildxError := BuildImageBuildx(params, imageHash, ResolveTargetTags(params, version), &buildLog)
+			if buildxError != nil {
+				return buildLog, buildxError
+			}
+		} else {
+			dockerClient, pushOptions, err := CreateDockerClient(params.DockerUsername, params.DockerPassword, params.Registry)
+			if err != nil {
+				return buildLog, err
+			}
+			defer dockerClient.Close()
 
-		// Build the image
-		localTag, dockerImageBuildError := BuildImage(params, imageHash, excludePatterns, dockerClient, &buildLog)
+			// Build the image
+			localTag, dockerImageBuildError := BuildImage(params, imageHash, excludePatterns, dockerClient, &buildLog)
 
-		if dockerImageBuildError != nil {
-			return buildLog, dockerImageBuildError
-		}
-		buildLog.localTag = localTag
+			if dockerImageBuildError != nil {
+				return buildLog, dockerImageBuildError
+			}
+			buildLog.localTag = localTag
 
-		LogInfo("Docker build complete, pushing the image to the registry\n")
+			LogInfo("Docker build complete, pushing the image to the registry\n")
 
-		// Now we push the hashed image and then all of the other tags that the
-		// user has specified
-		hashedImageNameError := TagAndPushImage(localTag, imageName, dockerClient, pushOptions)
-		if hashedImageNameError != nil {
-			return buildLog, hashedImageNameError
-		}
+			// Now we push the hashed image and then all of the other tags that the
+			// user has specified
+			hashedImageNameError := TagAndPushImage(localTag, imageName, dockerClient, pushOptions)
+			if hashedImageNameError != nil {
+				return buildLog, hashedImageNameError
+			}
 
-		LogInfo("The image has been pushed to the registry with the hash %s\n", imageName)
+			LogInfo("The image has been pushed to the registry with the hash %s\n", imageName)
 
-		// Now that the hashed image has been pushed, we can push all of the other tags
-		tagAndPushImagesError := TagAndPushNewImages(params, version, localTag, dockerClient, pushOptions, &buildLog)
-		if tagAndPushImagesError != nil {
-			return buildLog, tagAndPushImagesError
+			// Now that the hashed image has been pushed, we can push all of the other tags
+			tagAndPushImagesError := TagAndPushNewImages(params, version, localTag, dockerClient, pushOptions, &buildLog)
+			if tagAndPushImagesError != nil {
+				return buildLog, tagAndPushImagesError
+			}
 		}
 	}
 
 	return buildLog, nil
+}
+
+// hashPlatforms turns the requested --platform list into the string that feeds
+// overallHash (see the call site above). It returns the empty string for an
+// unset list so that, byte for byte, a build with no --platform hashes exactly
+// as a pre-platform-support dockem did - existing single-platform users get no
+// surprise cache invalidation. For a non-empty list it sorts the platforms
+// before joining them, so the cache identity depends on the *set* of target
+// platforms, not the order they happened to be passed on the command line
+// (`--platform linux/amd64,linux/arm64` and `--platform linux/arm64,linux/amd64`
+// are the same build and must share a hash). The input slice is not mutated.
+func hashPlatforms(platforms []string) string {
+	if len(platforms) == 0 {
+		return ""
+	}
+	sorted := append([]string(nil), platforms...)
+	sort.Strings(sorted)
+	return strings.Join(sorted, ",")
 }

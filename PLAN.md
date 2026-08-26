@@ -609,18 +609,19 @@ Critical correctness point. If `linux/amd64` is built today and
 `linux/amd64,linux/arm64` tomorrow, the inputs are unchanged but the required output
 is not — without this the tool would copy the single-arch image forward forever.
 
-- [ ] Sort the platform list, join it, and append it to `overallHash` in
+- [x] Sort the platform list, join it, and append it to `overallHash` in
       `BuildDockerImage`, immediately after the Dockerfile hash.
-- [ ] Append nothing when `--platform` is unset, so existing users who do not adopt the
+- [x] Append nothing when `--platform` is unset, so existing users who do not adopt the
       flag see no additional cache invalidation beyond Phase 3's.
-- [ ] Add a unit test asserting that two different platform lists yield different
+- [x] Add a unit test asserting that two different platform lists yield different
       hashes, and that an unset list matches the pre-Phase-4 hash.
 
 ### 4.4 The buildx build path
 
-- [ ] Add `cli/utils/build_image_buildx.go` with
+- [x] Add `cli/utils/build_image_buildx.go` with
       `BuildImageBuildx(params, imageHash, targetTags []string, buildLog) error`.
-- [ ] Assemble the argument list:
+      (Implemented as `BuildImageBuildx(params, imageHash string, targetTags []ResolvedTag, buildLog *BuildLog) error` — `[]ResolvedTag` rather than `[]string` so the per-branch log lines and `outputTags` can be produced on this path exactly as the classic push path does.)
+- [x] Assemble the argument list:
 
   ```
   docker buildx build
@@ -633,13 +634,13 @@ is not — without this the tool would copy the single-arch image forward foreve
     <context directory>
   ```
 
-- [ ] Note the structural change: buildx pushes **all** tags in one invocation, so on
+- [x] Note the structural change: buildx pushes **all** tags in one invocation, so on
       the buildx path `TagAndPushImage` and `TagAndPushNewImages` are not called. This
       is exactly why Phase 0.2 must land first — the tag list is needed up front.
-- [ ] Stream the subprocess `stdout`/`stderr` straight through to `os.Stderr` so build
+- [x] Stream the subprocess `stdout`/`stderr` straight through to `os.Stderr` so build
       logs keep flowing and stdout stays clean for JSON output.
-- [ ] Check the exit code and return a descriptive error on failure.
-- [ ] Pass the build context correctly for the Dockerfile-outside-context case. buildx
+- [x] Check the exit code and return a descriptive error on failure.
+- [x] Pass the build context correctly for the Dockerfile-outside-context case. buildx
       accepts a `--file` outside the context directory natively, so the temp-file
       workaround in `TarBuildContext` is **not needed on this path** — pass the real
       Dockerfile path directly. Keep `TarBuildContext` intact for the classic path.
@@ -665,12 +666,18 @@ config.
 
 ### 4.6 Verify the copy path handles manifest lists
 
-- [ ] Confirm `CopyDockerImage` (regclient `ImageCopy`) copies a multi-platform image
+- [x] Confirm `CopyDockerImage` (regclient `ImageCopy`) copies a multi-platform image
       index, not just a single manifest. It is expected to, but this is the single point
       where a wrong assumption would silently publish a broken multi-arch tag.
-- [ ] Add an e2e test: build a two-platform image, then re-run so the hash hits, and
+      (Verified against regclient v0.6.0 `image.go`: `imageCopyOpt` gets the source
+      manifest, and when it is a `manifest.Indexer` it iterates `GetManifestList()`,
+      recursively copying every child manifest by digest, then `ManifestPut`s the index
+      itself last — the whole image index is preserved.)
+- [x] Add an e2e test: build a two-platform image, then re-run so the hash hits, and
       assert the copied tag still resolves for both platforms via
-      `client.ManifestGet` on the target.
+      `client.ManifestGet` on the target. (test added as
+      `TestMultiPlatformBuildCopiesImageIndex` and compiles via `go vet`; execution
+      deferred: needs a real registry)
 
 ### 4.7 Build cache passthrough
 
