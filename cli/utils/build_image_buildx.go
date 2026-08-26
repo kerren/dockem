@@ -22,15 +22,26 @@ import (
 // exactly as TagAndPushNewImages emits them on the classic path, and so
 // buildLog.outputTags ends up byte-identical to the classic path.
 //
-// The command assembled is:
+// The command assembled (see assembleBuildxArgs) is:
 //
 //	docker buildx build --file <dockerfile>
 //	  [--platform <p1,p2,…>]        # omitted entirely when --platform is unset
+//	  [--cache-from <value>]…       # one flag per --cache-from value, omitted entirely when unset
+//	  [--cache-to <value>]…         # one flag per --cache-to value, omitted entirely when unset
 //	  --tag <image:hash>            # the hash tag, as on the classic path
 //	  --tag <each resolved target>  # every tag ResolveTargetTags produced
 //	  --push
 //	  [--progress plain]            # only when stderr is not a TTY
 //	  <context directory>
+//
+// --cache-from/--cache-to are passed through to buildx VERBATIM, exactly as the
+// caller wrote them - dockem never interprets or rewrites their contents. They
+// select a BuildKit cache backend (eg. type=gha for GitHub Actions) and change
+// how fast a build runs, never what it produces, so - unlike --platform - they
+// are deliberately excluded from the image hash (see build_docker_image.go).
+// When the classic (docker) builder is resolved instead of buildx,
+// BuildDockerImage logs a warning that these flags are being ignored, since
+// this function - and therefore the only place they take effect - never runs.
 //
 // The Dockerfile is passed by its real path: buildx accepts a --file outside
 // the context directory natively, so the out-of-context temp-file dance that
@@ -50,49 +61,7 @@ import (
 func BuildImageBuildx(params BuildDockerImageParams, imageHash string, targetTags []ResolvedTag, buildLog *BuildLog) error {
 	hashImageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 
-	args := []string{"buildx", "build", "--file", params.DockerfilePath}
-
-	// --platform is omitted entirely when unset, so a single-platform buildx
-	// build behaves as buildx's default (the host platform).
-	if len(params.Platform) > 0 {
-		args = append(args, "--platform", strings.Join(params.Platform, ","))
-	}
-
-	// The hash tag first, mirroring the classic path where TagAndPushImage
-	// pushes the hash tag before TagAndPushNewImages pushes the rest. The hash
-	// tag is a --tag but is deliberately NOT added to buildLog.outputTags,
-	// matching the classic path (TagAndPushImage does not record it either).
-	args = append(args, "--tag", hashImageName)
-
-	// Every resolved target tag reaches both the argument list and
-	// buildLog.outputTags, in ResolveTargetTags order, with the same per-branch
-	// log line the classic push path emits.
-	for _, resolved := range targetTags {
-		switch resolved.Reason {
-		case TagReasonTag:
-			LogInfo("Pushing the image to the new tag: %s\n", resolved.ImageName)
-		case TagReasonFallback:
-			LogWarn("No tags were specified and you have not selected the --latest flag, so the image will be deployed to the main version: %s\n", resolved.ImageName)
-		case TagReasonLatest:
-			LogInfo("You have selected the --latest flag, so the image will be deployed to the latest tag: %s\n", resolved.ImageName)
-		case TagReasonMainVersion:
-			LogInfo("You have selected the --main-version flag, so the image will be deployed to the main version: %s\n", resolved.ImageName)
-		}
-		args = append(args, "--tag", resolved.ImageName)
-		buildLog.outputTags = append(buildLog.outputTags, resolved.ImageName)
-	}
-
-	args = append(args, "--push")
-
-	// buildx renders an interactive progress UI when it thinks it is on a
-	// terminal. In CI (the primary use case for dockem) stderr is not a TTY, so
-	// ask for the plain, line-based progress that logs cleanly. We test stderr
-	// because that is where the build output is streamed.
-	if _, isTerminal := term.GetFdInfo(os.Stderr); !isTerminal {
-		args = append(args, "--progress", "plain")
-	}
-
-	args = append(args, params.Directory)
+	args := assembleBuildxArgs(params, hashImageName, targetTags, buildLog)
 
 	// Write the throwaway credentials (if any) and make sure they are removed
 	// however this function returns.
@@ -135,6 +104,81 @@ func BuildImageBuildx(params BuildDockerImageParams, imageHash string, targetTag
 
 	LogInfo("The image has been built and every tag pushed to the registry through docker buildx\n")
 	return nil
+}
+
+// assembleBuildxArgs builds the full `docker buildx build` argument list (ie.
+// everything that follows `docker` on the command line) described on
+// BuildImageBuildx. It is split out from BuildImageBuildx as a pure function -
+// no subprocess, no filesystem, no network - purely so the argument assembly,
+// in particular that --cache-from/--cache-to reach the list VERBATIM and one
+// flag per value, can be unit tested directly (see build_image_buildx_test.go)
+// without needing docker or a registry.
+//
+// It is not otherwise side-effect-free: exactly as before this was split out,
+// it emits the same per-branch log line TagAndPushNewImages emits for each
+// target tag (via LogInfo/LogWarn) and appends every target tag's fully
+// qualified image name to buildLog.outputTags, in ResolveTargetTags order.
+// Both of those are depended on elsewhere (see BuildImageBuildx's doc comment),
+// so preserve them if you touch this function.
+func assembleBuildxArgs(params BuildDockerImageParams, hashImageName string, targetTags []ResolvedTag, buildLog *BuildLog) []string {
+	args := []string{"buildx", "build", "--file", params.DockerfilePath}
+
+	// --platform is omitted entirely when unset, so a single-platform buildx
+	// build behaves as buildx's default (the host platform).
+	if len(params.Platform) > 0 {
+		args = append(args, "--platform", strings.Join(params.Platform, ","))
+	}
+
+	// --cache-from/--cache-to: one --cache-from/--cache-to flag per value,
+	// verbatim, in the order given, omitted entirely when unset (the same
+	// "no flag, no behaviour change" shape as --platform above). dockem does
+	// not parse or validate the value - eg. "type=gha" or
+	// "type=registry,ref=example.com/repo:cache" pass straight through so any
+	// buildx cache backend works without dockem needing to know about it.
+	for _, cacheFrom := range params.CacheFrom {
+		args = append(args, "--cache-from", cacheFrom)
+	}
+	for _, cacheTo := range params.CacheTo {
+		args = append(args, "--cache-to", cacheTo)
+	}
+
+	// The hash tag first, mirroring the classic path where TagAndPushImage
+	// pushes the hash tag before TagAndPushNewImages pushes the rest. The hash
+	// tag is a --tag but is deliberately NOT added to buildLog.outputTags,
+	// matching the classic path (TagAndPushImage does not record it either).
+	args = append(args, "--tag", hashImageName)
+
+	// Every resolved target tag reaches both the argument list and
+	// buildLog.outputTags, in ResolveTargetTags order, with the same per-branch
+	// log line the classic push path emits.
+	for _, resolved := range targetTags {
+		switch resolved.Reason {
+		case TagReasonTag:
+			LogInfo("Pushing the image to the new tag: %s\n", resolved.ImageName)
+		case TagReasonFallback:
+			LogWarn("No tags were specified and you have not selected the --latest flag, so the image will be deployed to the main version: %s\n", resolved.ImageName)
+		case TagReasonLatest:
+			LogInfo("You have selected the --latest flag, so the image will be deployed to the latest tag: %s\n", resolved.ImageName)
+		case TagReasonMainVersion:
+			LogInfo("You have selected the --main-version flag, so the image will be deployed to the main version: %s\n", resolved.ImageName)
+		}
+		args = append(args, "--tag", resolved.ImageName)
+		buildLog.outputTags = append(buildLog.outputTags, resolved.ImageName)
+	}
+
+	args = append(args, "--push")
+
+	// buildx renders an interactive progress UI when it thinks it is on a
+	// terminal. In CI (the primary use case for dockem) stderr is not a TTY, so
+	// ask for the plain, line-based progress that logs cleanly. We test stderr
+	// because that is where the build output is streamed.
+	if _, isTerminal := term.GetFdInfo(os.Stderr); !isTerminal {
+		args = append(args, "--progress", "plain")
+	}
+
+	args = append(args, params.Directory)
+
+	return args
 }
 
 // describePlatforms is a small logging convenience: it renders the requested

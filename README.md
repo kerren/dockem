@@ -54,6 +54,8 @@ Usage:
 
 Flags:
       --builder string                Which build backend to use: 'auto' (use buildx when available, otherwise the classic daemon builder), 'buildx', or 'docker' (force the classic builder). (default "auto")
+      --cache-from stringArray        Cache import source(s) to pass through to 'docker buildx build --cache-from', verbatim, one flag per value, eg. --cache-from=type=gha. Repeatable. Buildx-only: ignored (with a warning) when the classic --builder=docker path is selected, and deliberately excluded from the image hash since it only affects build speed.
+      --cache-to stringArray          Cache export target(s) to pass through to 'docker buildx build --cache-to', verbatim, one flag per value, eg. --cache-to=type=gha,mode=max. Repeatable. Buildx-only: ignored (with a warning) when the classic --builder=docker path is selected, and deliberately excluded from the image hash since it only affects build speed.
   -d, --directory string              (required) The directory that should be used as the context for the Docker build (default "./")
   -p, --docker-password string        The password that should be used to authenticate the docker client. Ignore if you have already logged in.
   -u, --docker-username string        The username that should be used to authenticate the docker client. Ignore if you have already logged in.
@@ -154,6 +156,8 @@ That concatenation is then hashed once to produce the image hash used as the reg
 The prefix in step 1 exists so a change to *how* the hash is put together (as opposed to what happens to go into it on a given run) can be signalled explicitly. Every release before `v3` used an implicit, unmarked hash format &mdash; `overallHash` simply started as `""`. `v3` is the first release to mark that format, as `dockem-hash-v2`, at the same time as flipping `--respect-dockerignore` to default `true`. Bumping this prefix in some future release resets the cache for every image on purpose, as a deliberate, visible line in that release's diff, rather than silently as a side effect of some unrelated change.
 
 **Upgrading to `v3` invalidates every hash tag your pipelines have ever published**, because both of the changes above &mdash; respecting `.dockerignore` by default and introducing the `dockem-hash-v2` prefix &mdash; change what the hash is computed from. The first `v3` build of every image will be a full build-and-push, even if nothing about the image itself has changed since the last `v2` build. After that first build, caching behaves exactly as before: unchanged inputs mean a cache hit and a tag copy, changed inputs mean a rebuild.
+
+`--cache-from` and `--cache-to` (see [Build Cache](#build-cache---cache-from----cache-to) below) are deliberately **not** part of this concatenation. They select where `buildx` reads and writes its layer cache, which changes how fast a build runs but never the image it produces, so changing them never changes the hash and never invalidates a previously published hash tag.
 
 
 ### Main Version
@@ -267,6 +271,40 @@ exists, so `dockem` copies the whole multi-arch index to your tags registry-side
 no rebuild, no pull, no push.
 
 
+### Build Cache (`--cache-from` / `--cache-to`)
+
+`--cache-from` and `--cache-to` are passed straight through to `docker buildx build`,
+one `--cache-from`/`--cache-to` flag per value, exactly as you wrote them &mdash;
+`dockem` does not interpret or validate their contents. They select a BuildKit
+[cache backend](https://docs.docker.com/build/cache/backends/) (eg. `type=gha` for
+GitHub Actions' cache, `type=registry` for a registry-backed cache, or `type=local`
+for a local directory), which lets `buildx` reuse layers from a previous build instead
+of rebuilding them from scratch. Both flags are repeatable, so you can pass more than
+one cache source/target.
+
+Here's the multi-architecture example above with a GitHub Actions cache added:
+
+```shell
+dockem build \
+  --image-name=my-repo/backend \
+  --dockerfile-path=./apps/backend/Dockerfile \
+  --directory=./apps/backend \
+  --platform=linux/amd64,linux/arm64 \
+  --tag=stable \
+  --latest \
+  --cache-from=type=gha \
+  --cache-to=type=gha,mode=max
+```
+
+These flags are **buildx-only**, and change build *speed*, never the image that gets
+produced, so they are deliberately excluded from the image hash (see
+[Cache identity](#cache-identity) above) &mdash; passing a new `--cache-to` does not
+invalidate any previously published hash tag, and two builds with identical inputs but
+different cache flags still share a hash. If `--cache-from` or `--cache-to` are supplied
+while the classic (`--builder=docker`) path is selected, `dockem` logs a warning and
+ignores them, since the classic builder has no cache import/export mechanism of its own.
+
+
 ### Output Format
 
 By default (`--output-format=text`), `dockem` just logs its human-readable progress
@@ -344,8 +382,8 @@ There are a few tweaks and features I'd like to implement to improve the overall
  - [x] Add more examples to the documentation on how to use the `cli` effectively
  - [ ] Add documentation to the `utils` functions
  - [ ] Add a Homebrew tap
- - [ ] Add the ability to enable `buildx` caching for Github Actions. This could make the builds faster in future.
- - [ ] Add the ability to specify the platform(s) you'd like to build for using a `buildx` builder. This would be cool to be able to build ARM images using a standard runner. For now, I recommend deploying a custom ARM runner and building on that (it'll also be a lot faster)
+ - [x] Add the ability to enable `buildx` caching for Github Actions. This could make the builds faster in future.
+ - [x] Add the ability to specify the platform(s) you'd like to build for using a `buildx` builder. This would be cool to be able to build ARM images using a standard runner. For now, I recommend deploying a custom ARM runner and building on that (it'll also be a lot faster)
 
 # The Long Argument
 So now you may ask, why? What's the point?

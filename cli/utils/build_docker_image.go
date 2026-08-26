@@ -135,6 +135,23 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 	imageHash := HashString(overallHash)
 	buildLog.imageHash = imageHash
 
+	// --cache-from/--cache-to only take effect on the buildx build path (see
+	// assembleBuildxArgs in build_image_buildx.go) - warn instead of silently
+	// ignoring them so a run that resolved to the classic builder doesn't leave
+	// a caller wondering why eg. their GitHub Actions cache is never reused.
+	// This deliberately sits AFTER imageHash is computed above, never before:
+	// these flags affect build speed only and must never feed overallHash.
+	if resolvedBuilder != "buildx" && (len(params.CacheFrom) > 0 || len(params.CacheTo) > 0) {
+		var ignoredCacheFlags []string
+		if len(params.CacheFrom) > 0 {
+			ignoredCacheFlags = append(ignoredCacheFlags, "--cache-from")
+		}
+		if len(params.CacheTo) > 0 {
+			ignoredCacheFlags = append(ignoredCacheFlags, "--cache-to")
+		}
+		LogWarn("%s set but the resolved builder is '%s', not buildx - cache import/export only applies to the buildx build path and will be ignored for this run.\n", strings.Join(ignoredCacheFlags, " and "), resolvedBuilder)
+	}
+
 	// Now we need to open the version file (JSON file) and pull out the "version" key
 	version, versionError := ExtractVersion(params.VersionFile)
 	if versionError != nil {

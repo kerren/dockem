@@ -684,23 +684,54 @@ config.
 Cheap to add once the subprocess exists, and directly addresses the existing README
 roadmap item.
 
-- [ ] Add `--cache-from` and `--cache-to` (string arrays) passed through verbatim to
-      buildx, enabling `type=gha` on GitHub Actions.
-- [ ] Document that these affect build *speed* only and are deliberately **not** part of
-      the hash.
+- [x] Add `--cache-from` and `--cache-to` (string arrays) passed through verbatim to
+      buildx, enabling `type=gha` on GitHub Actions. (`BuildDockerImageParams.CacheFrom`/
+      `CacheTo`, repeatable `--cache-from`/`--cache-to` flags on `cli/cmd/build.go`,
+      forwarded one `--cache-from <value>`/`--cache-to <value>` pair per element by the
+      new pure `assembleBuildxArgs` helper in `cli/utils/build_image_buildx.go`. Warns via
+      `LogWarn` in `BuildDockerImage` when either is supplied but the resolved builder is
+      not `buildx`.)
+- [x] Document that these affect build *speed* only and are deliberately **not** part of
+      the hash. (README's "Build Cache" section and "Cache identity" note; `CLAUDE.md`'s
+      hash-inputs paragraph and buildx-path bullet. Enforced, not just documented: a new
+      pure unit test, `TestCacheFromCacheToExcludedFromImageHash` in
+      `cli/utils/build_docker_image_cache_hash_test.go`, fails the build if
+      `build_docker_image.go`'s `overallHash` accumulation ever comes to reference
+      `CacheFrom`/`CacheTo`.)
 
 ### 4.8 Tests and docs
 
-- [ ] e2e: single-platform buildx build, hash miss then hash hit.
+- [ ] e2e: single-platform buildx build, hash miss then hash hit. (test added as
+      `TestSinglePlatformBuildxBuildHashMissThenHashHit` in
+      `cli/utils/build_docker_image_test.go` and compiles via `go vet`; execution
+      deferred: needs a real registry)
 - [ ] e2e: `linux/amd64,linux/arm64` build, asserting the pushed tag is an image index.
-- [ ] e2e: `--builder=docker` still exercises the classic path unchanged.
-- [ ] Unit: `--platform` with multiple values and no buildx returns a clear error.
-- [ ] CI: confirm the GitHub Actions runner has buildx, and add
-      `docker/setup-buildx-action` to `.github/workflows/testing.yaml` if not.
-- [ ] README: document `--platform`, `--builder`, `--cache-from`, `--cache-to`, and add
-      a multi-arch example.
-- [ ] README: tick the two buildx roadmap items.
-- [ ] `CLAUDE.md`: describe the two build paths and when each is selected.
+      (already added in Phase 4.6 as `TestMultiPlatformBuildCopiesImageIndex`; still
+      unticked here for the same reason as the other two e2e rows on this rung -
+      execution deferred: needs a real registry)
+- [ ] e2e: `--builder=docker` still exercises the classic path unchanged. (test added as
+      `TestBuilderDockerForcesClassicPathUnchanged` in
+      `cli/utils/build_docker_image_test.go`, asserting `buildLog.builder == "docker"`
+      and that `buildLog.localTag` is set - the classic-only signal buildx never
+      populates - and compiles via `go vet`; execution deferred: needs a real registry)
+- [x] Unit: `--platform` with multiple values and no buildx returns a clear error.
+      (pure unit test, no registry needed - already present from rung 8 as
+      `TestResolveBuilderMultiPlatformWithoutBuildxErrors` in
+      `cli/utils/resolve_builder_test.go`; re-ran it during this rung to confirm)
+- [x] CI: confirm the GitHub Actions runner has buildx, and add
+      `docker/setup-buildx-action` to `.github/workflows/testing.yaml` if not. (added -
+      `ubuntu-latest` ships a buildx plugin, but not the `docker-container` driver that
+      `--cache-to`/multi-platform pushes need, so `docker/setup-buildx-action@v3` was
+      added as an explicit step rather than relying on the runner image's default)
+- [x] README: document `--platform`, `--builder`, `--cache-from`, `--cache-to`, and add
+      a multi-arch example. (all four present in the flag table, verified against real
+      `dockem build --help` output; `--platform`/`--builder` prose and multi-arch example
+      already present from rung 7/8; added a "Build Cache" section with a
+      `--cache-from=type=gha --cache-to=type=gha,mode=max` example)
+- [x] README: tick the two buildx roadmap items.
+- [x] `CLAUDE.md`: describe the two build paths and when each is selected. (already done
+      in rung 8; extended the buildx-path bullet and the hash-inputs paragraph with the
+      cache flags this rung)
 
 ---
 
@@ -709,15 +740,28 @@ roadmap item.
 Run before each release.
 
 - [ ] `task test` passes with real registry credentials (`-count=1` — results must not
-      be cached).
-- [ ] The pure unit tests pass with **no** credentials set.
-- [ ] `task build-binary` succeeds.
-- [ ] README flag table matches `cli/cmd/build.go` exactly.
-- [ ] `CLAUDE.md` updated for any architectural change.
+      be cached). (deferred: needs a real registry - not available in this environment;
+      `go build ./... && go vet ./... && go test -count=1 ./...` with every e2e test name
+      skipped was run instead, see the rung 9 commit)
+- [x] The pure unit tests pass with **no** credentials set. (re-ran this rung with
+      `DOCKER_PASSWORD`/`TEST_IMAGE_NAME` unset; every test that ran passed)
+- [x] `task build-binary` succeeds. (re-ran this rung)
+- [x] README flag table matches `cli/cmd/build.go` exactly. (diffed the README's Flags
+      block against real `dockem build --help` output this rung: all four buildx flags
+      and every other flag match verbatim. One pre-existing, unrelated gap noted for
+      honesty rather than silently left: `-v, --version`, cobra's auto-generated flag
+      from `buildCmd.Version`, is missing from the README table - it predates this rung
+      and no flag in `cli/cmd/build.go` defines it, so it is out of this rung's scope)
+- [x] `CLAUDE.md` updated for any architectural change. (cache-flag passthrough and the
+      classic-builder warning, this rung)
 - [ ] Conventional Commits used throughout, with scopes and trailing `#issue` refs
-      (`feat(hash):`, `fix(registry):`, `feat(buildx):`).
+      (`feat(hash):`, `fix(registry):`, `feat(buildx):`). (this rung's commit is a
+      Conventional Commit with a `feat(buildx):` scope but, per its dictated exact
+      subject, no trailing `#issue` ref; left unticked rather than claiming the full
+      history - which is outside a single rung's agent's ability to verify - conforms)
 - [ ] Work merged into `develop`, released to `main` via `task release`
-      (`task release-major` for v3.0.0).
+      (`task release-major` for v3.0.0). (not done - out of scope for this rung; local
+      commits only, per this rung's constraints)
 
 ---
 

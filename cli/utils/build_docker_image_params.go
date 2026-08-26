@@ -2,6 +2,8 @@ package utils
 
 type BuildDockerImageParams struct {
 	Builder              string
+	CacheFrom            []string
+	CacheTo              []string
 	Directory            string
 	DockerPassword       string
 	DockerUsername       string

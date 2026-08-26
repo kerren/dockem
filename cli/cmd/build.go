@@ -36,6 +36,8 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		builder, _ := cmd.Flags().GetString("builder")
 		utils.AssertOneOf(builder, []string{"auto", "buildx", "docker"}, "ERROR: The builder '%s' is not valid. Please specify one of 'auto', 'buildx' or 'docker'.")
 
+		cacheFrom, _ := cmd.Flags().GetStringArray("cache-from")
+		cacheTo, _ := cmd.Flags().GetStringArray("cache-to")
 		dockerPassword, _ := cmd.Flags().GetString("docker-password")
 		dockerUsername, _ := cmd.Flags().GetString("docker-username")
 		exclude, _ := cmd.Flags().GetStringArray("exclude")
@@ -77,6 +79,8 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		// Now we can create the build docker image params struct
 		buildDockerImageParams := utils.BuildDockerImageParams{
 			Builder:              builder,
+			CacheFrom:            cacheFrom,
+			CacheTo:              cacheTo,
 			Directory:            directory,
 			DockerPassword:       dockerPassword,
 			DockerUsername:       dockerUsername,
@@ -155,6 +159,8 @@ func init() {
 	buildCmd.Flags().StringArray("exclude", []string{}, "Extra .dockerignore-style pattern(s) to exclude from both the input hash and the build context. Repeatable. Always applied, even without --respect-dockerignore.")
 	buildCmd.Flags().StringArray("platform", []string{}, "Target platform(s) to build for, eg. linux/amd64. Repeatable and comma-splittable (--platform linux/amd64,linux/arm64). Building more than one platform requires buildx; it errors, rather than silently falling back, when buildx is unavailable or --builder=docker is set.")
 	buildCmd.Flags().String("builder", "auto", "Which build backend to use: 'auto' (use buildx when available, otherwise the classic daemon builder), 'buildx', or 'docker' (force the classic builder).")
+	buildCmd.Flags().StringArray("cache-from", []string{}, "Cache import source(s) to pass through to 'docker buildx build --cache-from', verbatim, one flag per value, eg. --cache-from=type=gha. Repeatable. Buildx-only: ignored (with a warning) when the classic --builder=docker path is selected, and deliberately excluded from the image hash since it only affects build speed.")
+	buildCmd.Flags().StringArray("cache-to", []string{}, "Cache export target(s) to pass through to 'docker buildx build --cache-to', verbatim, one flag per value, eg. --cache-to=type=gha,mode=max. Repeatable. Buildx-only: ignored (with a warning) when the classic --builder=docker path is selected, and deliberately excluded from the image hash since it only affects build speed.")
 
 	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 
