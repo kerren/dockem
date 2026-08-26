@@ -53,6 +53,7 @@ Usage:
 
 
 Flags:
+      --builder string                Which build backend to use: 'auto' (use buildx when available, otherwise the classic daemon builder), 'buildx', or 'docker' (force the classic builder). (default "auto")
   -d, --directory string              (required) The directory that should be used as the context for the Docker build (default "./")
   -p, --docker-password string        The password that should be used to authenticate the docker client. Ignore if you have already logged in.
   -u, --docker-username string        The username that should be used to authenticate the docker client. Ignore if you have already logged in.
@@ -67,6 +68,7 @@ Flags:
       --no-respect-dockerignore       Explicitly do NOT respect the .dockerignore file, opting back into the pre-v3 behaviour of hashing and sending everything in the build directory.
       --output-file string            The path of a file to write the --output-format=json build result to, instead of stdout. Ignored when --output-format is not 'json'.
       --output-format string          The format to print the build result in, either 'text' (the default, today's human-readable logging) or 'json' (an indented JSON BuildResult on stdout, or --output-file if set). $GITHUB_OUTPUT is always written to when set, regardless of this flag. (default "text")
+      --platform stringArray          Target platform(s) to build for, eg. linux/amd64. Repeatable and comma-splittable (--platform linux/amd64,linux/arm64). Building more than one platform requires buildx; it errors, rather than silently falling back, when buildx is unavailable or --builder=docker is set.
   -r, --registry string               The registry that should be used when pulling/pushing the image, Dockerhub is used by default
       --respect-dockerignore          Respect the .dockerignore file in the build directory (and any --ignore-file) when hashing the inputs and building the context, excluding matching files from both. Defaults to true as of v3; this reset every published hash tag when it flipped from v2's default of false. (default true)
   -s, --strict-registry               Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.
@@ -206,6 +208,34 @@ other than the hash genuinely not existing, the build aborts immediately instead
 proceeding. This is useful in CI/CD pipelines where you'd rather fail fast on a
 credentials or registry problem than pay for a full build and push that may well fail
 again at the push step for the same reason.
+
+
+### Builder and Platforms
+
+`dockem` can build through two backends. The classic path uses the Docker daemon's
+built-in builder, exactly as it always has. `docker buildx`, when it's available, is
+what makes multi-architecture images possible.
+
+`--builder` chooses between them:
+
+- `auto` (the default) &mdash; use `buildx` when `docker buildx version` succeeds,
+  otherwise fall back to the classic daemon builder.
+- `buildx` &mdash; require `buildx`; error if it isn't available.
+- `docker` &mdash; force the classic builder.
+
+`--platform` sets the target platform(s), for example `--platform linux/amd64`. It is
+both repeatable and comma-splittable, so `--platform linux/amd64 --platform linux/arm64`
+and `--platform linux/amd64,linux/arm64` mean the same thing.
+
+Building for **more than one platform requires `buildx`**. If you ask for multiple
+platforms while `buildx` is unavailable, or while `--builder=docker` forces the classic
+builder, `dockem` **errors out** rather than silently building a single-architecture
+image and publishing it under a tag that looks multi-arch &mdash; a single-arch image
+hiding behind a multi-arch tag is worse than a failed build.
+
+> **Note:** on this release `--builder` and `--platform` are wired up to *resolve* the
+> builder and report the decision; the `buildx` build path itself lands in a following
+> change, so builds still run through the classic daemon builder for now.
 
 
 ### Output Format

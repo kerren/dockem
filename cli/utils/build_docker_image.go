@@ -44,6 +44,29 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 	buildLog = BuildLog{}
 	buildLog.respectDockerignore = params.RespectDockerignore
 
+	// Resolve which build backend this run will use before doing any hashing or
+	// registry work, so an impossible request (eg. multiple --platform values on
+	// a machine without buildx) fails fast rather than after a HEAD check. Only
+	// probe for buildx when it could actually be chosen - --builder=docker never
+	// needs it. NOTE: this rung only *resolves and records* the builder; the
+	// buildx build path itself is wired up in a later rung, so the classic
+	// daemon builder below is still used regardless of the decision here.
+	builderPreference := params.Builder
+	if builderPreference == "" {
+		builderPreference = "auto"
+	}
+	buildxAvailable := false
+	buildxVersion := ""
+	if builderPreference != "docker" {
+		buildxAvailable, buildxVersion, _ = DetectBuildx()
+	}
+	resolvedBuilder, resolveBuilderError := ResolveBuilder(builderPreference, params.Platform, buildxAvailable, buildxVersion)
+	if resolveBuilderError != nil {
+		return buildLog, resolveBuilderError
+	}
+	buildLog.builder = resolvedBuilder
+	buildLog.platforms = params.Platform
+
 	// Resolve the ignore/exclude patterns ONCE. The exact same slice feeds the
 	// input hash (HashDirectory / HashWatchDirectories) and the build-context
 	// tar (TarBuildContext). If those two ever derived from different lists,
@@ -161,6 +184,14 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 			return buildLog, err
 		}
 		defer dockerClient.Close()
+
+		// The buildx build path is not wired up on this rung yet, so even when
+		// the builder resolved to buildx we still build through the classic
+		// daemon. Say so plainly rather than letting the earlier "resolved to
+		// buildx" line imply a buildx build actually happened.
+		if buildLog.builder == "buildx" {
+			LogInfo("The buildx build path is not enabled yet; building with the classic daemon builder for now.\n")
+		}
 
 		// Build the image
 		localTag, dockerImageBuildError := BuildImage(params, imageHash, excludePatterns, dockerClient, &buildLog)

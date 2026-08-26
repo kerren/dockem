@@ -1,6 +1,7 @@
 package utils
 
 type BuildDockerImageParams struct {
+	Builder              string
 	Directory            string
 	DockerPassword       string
 	DockerUsername       string
@@ -13,6 +14,7 @@ type BuildDockerImageParams struct {
 	MainVersion          bool
 	OutputFile           string
 	OutputFormat         string
+	Platform             []string
 	Registry             string
 	RespectDockerignore  bool
 	StrictRegistry       bool

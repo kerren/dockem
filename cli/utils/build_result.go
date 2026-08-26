@@ -36,6 +36,14 @@ func (b BuildLog) Result() BuildResult {
 		primaryTag = tags[0]
 	}
 
+	platforms := b.platforms
+	if platforms == nil {
+		// As with tags above, prefer an empty slice over nil so this marshals
+		// to `[]`, not `null`. This is the requested --platform list; it is
+		// empty for a single-platform build, which is the default.
+		platforms = []string{}
+	}
+
 	return BuildResult{
 		Hash:       b.imageHash,
 		CacheHit:   b.hashExists,
@@ -43,7 +51,7 @@ func (b BuildLog) Result() BuildResult {
 		Version:    b.version,
 		Tags:       tags,
 		PrimaryTag: primaryTag,
-		Platforms:  []string{},
+		Platforms:  platforms,
 		Registry:   b.dockerRegistry,
 		DurationMs: b.durationMs,
 	}
