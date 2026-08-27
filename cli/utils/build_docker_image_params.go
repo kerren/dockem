@@ -19,6 +19,7 @@ type BuildDockerImageParams struct {
 	Platform             []string
 	Registry             string
 	RespectDockerignore  bool
+	Secret               []string
 	StrictRegistry       bool
 	Tag                  []string
 	VersionFile          string

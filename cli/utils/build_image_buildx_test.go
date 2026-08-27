@@ -133,6 +133,121 @@ func TestAssembleBuildxArgsOmitsCacheFlagsWhenUnset(t *testing.T) {
 	}
 }
 
+// TestAssembleBuildxArgsSecretFlagsPassedVerbatim pins both the content and the
+// POSITION of --secret in one whole-slice comparison. Position is the thing the
+// pair-scanning test below cannot prove, and it only means anything when the
+// neighbouring flags exist - hence --platform, --cache-from and --cache-to are
+// all populated here too. --secret must land after the cache flags and before
+// the first --tag, matching the documented command shape on BuildImageBuildx.
+//
+// The value carries an "=" and a "," because that is the shape every real
+// buildx secret takes (id=npmrc,src=./.npmrc). If anyone ever "helpfully" adds
+// the --platform style comma-splitting to --secret, this test fails: a split
+// would turn one secret into the two meaningless fragments "id=npmrc" and
+// "src=./.npmrc".
+func TestAssembleBuildxArgsSecretFlagsPassedVerbatim(t *testing.T) {
+	params := BuildDockerImageParams{
+		DockerfilePath: "Dockerfile",
+		Directory:      "./context",
+		Platform:       []string{"linux/amd64"},
+		CacheFrom:      []string{"type=gha"},
+		CacheTo:        []string{"type=gha,mode=max"},
+		Secret:         []string{"id=npmrc,src=./.npmrc"},
+	}
+	buildLog := &BuildLog{}
+
+	got := assembleBuildxArgs(params, "example.com/repo:hash123", nil, buildLog)
+
+	want := []string{
+		"buildx", "build",
+		"--file", "Dockerfile",
+		"--platform", "linux/amd64",
+		"--cache-from", "type=gha",
+		"--cache-to", "type=gha,mode=max",
+		"--secret", "id=npmrc,src=./.npmrc",
+		"--tag", "example.com/repo:hash123",
+		"--push",
+	}
+	if wantProgressPlain() {
+		want = append(want, "--progress", "plain")
+	}
+	want = append(want, "./context")
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("assembleBuildxArgs secret flags not verbatim/positioned as expected:\ngot:  %#v\nwant: %#v", got, want)
+	}
+}
+
+// TestAssembleBuildxArgsMultipleSecretValuesEachGetOwnFlag confirms --secret is
+// repeatable: every value gets its own flag, in the order given, and both of
+// buildx's secret forms - src=<path> and env=<VAR> - survive intact. It also
+// pins the ordering relative to its neighbours without depending on the exact
+// contents of the rest of the slice.
+func TestAssembleBuildxArgsMultipleSecretValuesEachGetOwnFlag(t *testing.T) {
+	params := BuildDockerImageParams{
+		DockerfilePath: "Dockerfile",
+		Directory:      "./context",
+		CacheTo:        []string{"type=gha,mode=max"},
+		Secret: []string{
+			"id=npmrc,src=./.npmrc",
+			"id=token,env=NPM_TOKEN",
+			"id=bare",
+		},
+	}
+	buildLog := &BuildLog{}
+
+	got := assembleBuildxArgs(params, "example.com/repo:hash123", nil, buildLog)
+
+	wantPairs := [][2]string{
+		{"--secret", "id=npmrc,src=./.npmrc"},
+		{"--secret", "id=token,env=NPM_TOKEN"},
+		{"--secret", "id=bare"},
+	}
+	for _, pair := range wantPairs {
+		found := false
+		for i := 0; i+1 < len(got); i++ {
+			if got[i] == pair[0] && got[i+1] == pair[1] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected %s %q to reach the argument list verbatim and adjacent, got %#v", pair[0], pair[1], got)
+		}
+	}
+
+	if n := countArg(got, "--secret"); n != 3 {
+		t.Errorf("expected exactly 3 --secret flags, got %d in %#v", n, got)
+	}
+
+	// --secret sits between the cache flags and the tags.
+	if lastIndexOfArg(got, "--cache-to") > indexOfArg(got, "--secret") {
+		t.Errorf("expected every --cache-to flag before the first --secret, got %#v", got)
+	}
+	if lastIndexOfArg(got, "--secret") > indexOfArg(got, "--tag") {
+		t.Errorf("expected every --secret flag before the first --tag, got %#v", got)
+	}
+}
+
+// TestAssembleBuildxArgsOmitsSecretFlagWhenUnset: like --platform and the cache
+// flags, --secret must be entirely absent when not supplied, so a caller who
+// never adopts it sees a byte-identical buildx invocation to before this change.
+func TestAssembleBuildxArgsOmitsSecretFlagWhenUnset(t *testing.T) {
+	params := BuildDockerImageParams{
+		DockerfilePath: "Dockerfile",
+		Directory:      "./context",
+	}
+	buildLog := &BuildLog{}
+
+	got := assembleBuildxArgs(params, "example.com/repo:hash123", nil, buildLog)
+
+	for _, a := range got {
+		if a == "--secret" {
+			t.Fatalf("assembleBuildxArgs must omit --secret entirely when unset, got %#v", got)
+		}
+	}
+}
+
 func indexOfArg(args []string, needle string) int {
 	for i, a := range args {
 		if a == needle {

@@ -28,6 +28,7 @@ import (
 //	  [--platform <p1,p2,…>]        # omitted entirely when --platform is unset
 //	  [--cache-from <value>]…       # one flag per --cache-from value, omitted entirely when unset
 //	  [--cache-to <value>]…         # one flag per --cache-to value, omitted entirely when unset
+//	  [--secret <value>]…           # one flag per --secret value, omitted entirely when unset
 //	  --tag <image:hash>            # the hash tag, as on the classic path
 //	  --tag <each resolved target>  # every tag ResolveTargetTags produced
 //	  --push
@@ -42,6 +43,17 @@ import (
 // When the classic (docker) builder is resolved instead of buildx,
 // BuildDockerImage logs a warning that these flags are being ignored, since
 // this function - and therefore the only place they take effect - never runs.
+//
+// --secret is passed through VERBATIM in the same way, and is likewise excluded
+// from the image hash - a build secret is a credential that routinely rotates
+// (a CI token changes on every run), so hashing it would invalidate every tag on
+// every build. It differs from the cache flags in one important way: on the
+// classic path it is a HARD ERROR in ResolveBuilder rather than a warning here,
+// because the classic builder has no BuildKit session and would hand the
+// Dockerfile an empty /run/secrets/<id>, publishing an image built without the
+// secret. Note the secret VALUE never reaches this argument list: buildx's
+// --secret syntax carries only an id and a reference to the value (env=NAME or
+// src=PATH), so nothing sensitive lands in the subprocess argv.
 //
 // The Dockerfile is passed by its real path: buildx accepts a --file outside
 // the context directory natively, so the out-of-context temp-file dance that
@@ -110,8 +122,9 @@ func BuildImageBuildx(params BuildDockerImageParams, imageHash string, targetTag
 // everything that follows `docker` on the command line) described on
 // BuildImageBuildx. It is split out from BuildImageBuildx as a pure function -
 // no subprocess, no filesystem, no network - purely so the argument assembly,
-// in particular that --cache-from/--cache-to reach the list VERBATIM and one
-// flag per value, can be unit tested directly (see build_image_buildx_test.go)
+// in particular that --cache-from/--cache-to/--secret reach the list VERBATIM
+// and one flag per value, can be unit tested directly (see
+// build_image_buildx_test.go)
 // without needing docker or a registry.
 //
 // It is not otherwise side-effect-free: exactly as before this was split out,
@@ -140,6 +153,20 @@ func assembleBuildxArgs(params BuildDockerImageParams, hashImageName string, tar
 	}
 	for _, cacheTo := range params.CacheTo {
 		args = append(args, "--cache-to", cacheTo)
+	}
+
+	// --secret: one --secret flag per value, verbatim, in the order given,
+	// omitted entirely when unset - the same shape as the cache flags above.
+	// dockem does not parse the value, so id=, env=, src=, type= and any future
+	// buildx secret syntax pass straight through. In particular the value is
+	// never re-split on commas: "id=npmrc,src=/path" is ONE secret.
+	//
+	// Unlike the cache flags, reaching this loop on the classic path is
+	// impossible rather than merely unhelpful: ResolveBuilder hard-errors when
+	// secrets are requested and the resolved builder is not buildx, because a
+	// classic build would mount an empty secret file and publish a wrong image.
+	for _, secret := range params.Secret {
+		args = append(args, "--secret", secret)
 	}
 
 	// The hash tag first, mirroring the classic path where TagAndPushImage

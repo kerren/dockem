@@ -54,6 +54,10 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		}
 		outputFile, _ := cmd.Flags().GetString("output-file")
 		registry, _ := cmd.Flags().GetString("registry")
+		// --secret values are taken verbatim: unlike --platform they are NOT split
+		// on commas, because "id=npmrc,src=/path" is a single buildx secret and
+		// splitting it would shred it.
+		secret, _ := cmd.Flags().GetStringArray("secret")
 		strictRegistry, _ := cmd.Flags().GetBool("strict-registry")
 		tag, _ := cmd.Flags().GetStringArray("tag")
 		watchDirectory, _ := cmd.Flags().GetStringArray("watch-directory")
@@ -96,6 +100,7 @@ otherwise, build the new image and push it to the specified tag(s).`,
 			Platform:             platform,
 			Registry:             registry,
 			RespectDockerignore:  respectDockerignore,
+			Secret:               secret,
 			StrictRegistry:       strictRegistry,
 			Tag:                  tag,
 			VersionFile:          versionFile,
@@ -161,6 +166,7 @@ func init() {
 	buildCmd.Flags().String("builder", "auto", "Which build backend to use: 'auto' (use buildx when available, otherwise the classic daemon builder), 'buildx', or 'docker' (force the classic builder).")
 	buildCmd.Flags().StringArray("cache-from", []string{}, "Cache import source(s) to pass through to 'docker buildx build --cache-from', verbatim, one flag per value, eg. --cache-from=type=gha. Repeatable. Buildx-only: ignored (with a warning) when the classic --builder=docker path is selected, and deliberately excluded from the image hash since it only affects build speed.")
 	buildCmd.Flags().StringArray("cache-to", []string{}, "Cache export target(s) to pass through to 'docker buildx build --cache-to', verbatim, one flag per value, eg. --cache-to=type=gha,mode=max. Repeatable. Buildx-only: ignored (with a warning) when the classic --builder=docker path is selected, and deliberately excluded from the image hash since it only affects build speed.")
+	buildCmd.Flags().StringArray("secret", []string{}, "Build secret(s) to pass through to 'docker buildx build --secret', verbatim, one flag per value, eg. --secret=id=npmrc,src=$HOME/.npmrc. Repeatable. Buildx-only, and unlike the cache flags this is a hard error rather than a warning when the classic --builder=docker path is selected, since building without the secret would produce a different image. Deliberately excluded from the image hash.")
 
 	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 

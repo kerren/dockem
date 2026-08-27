@@ -73,6 +73,7 @@ Flags:
       --platform stringArray          Target platform(s) to build for, eg. linux/amd64. Repeatable and comma-splittable (--platform linux/amd64,linux/arm64). Building more than one platform requires buildx; it errors, rather than silently falling back, when buildx is unavailable or --builder=docker is set.
   -r, --registry string               The registry that should be used when pulling/pushing the image, Dockerhub is used by default
       --respect-dockerignore          Respect the .dockerignore file in the build directory (and any --ignore-file) when hashing the inputs and building the context, excluding matching files from both. Defaults to true as of v3; this reset every published hash tag when it flipped from v2's default of false. (default true)
+      --secret stringArray            Build secret(s) to pass through to 'docker buildx build --secret', verbatim, one flag per value, eg. --secret=id=npmrc,src=$HOME/.npmrc. Repeatable. Buildx-only, and unlike the cache flags this is a hard error rather than a warning when the classic --builder=docker path is selected, since building without the secret would produce a different image. Deliberately excluded from the image hash.
   -s, --strict-registry               Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.
   -t, --tag stringArray               The tag or tags that should be attached to image
   -F, --version-file string           (required) The name of the JSON file that holds the version to be used in the build. This JSON file must have the 'version' key. (default "./package.json")
@@ -158,6 +159,10 @@ The prefix in step 1 exists so a change to *how* the hash is put together (as op
 **Upgrading to `v3` invalidates every hash tag your pipelines have ever published**, because both of the changes above &mdash; respecting `.dockerignore` by default and introducing the `dockem-hash-v2` prefix &mdash; change what the hash is computed from. The first `v3` build of every image will be a full build-and-push, even if nothing about the image itself has changed since the last `v2` build. After that first build, caching behaves exactly as before: unchanged inputs mean a cache hit and a tag copy, changed inputs mean a rebuild.
 
 `--cache-from` and `--cache-to` (see [Build Cache](#build-cache---cache-from----cache-to) below) are deliberately **not** part of this concatenation. They select where `buildx` reads and writes its layer cache, which changes how fast a build runs but never the image it produces, so changing them never changes the hash and never invalidates a previously published hash tag.
+
+`--secret` (see [Build Secrets](#build-secrets---secret) below) is likewise excluded, for a related but not identical reason. A build secret is a credential the build *uses* &mdash; an npm token, an SSH key &mdash; not an input that defines what the build *produces*: two builds with the same inputs and a rotated token want the same image. Folding it into the hash would do the opposite of what you want, since a CI token that changes on every run would change the hash on every run and every image would rebuild every time.
+
+The corollary is a sharp edge worth stating plainly: if your `Dockerfile` writes a secret's *contents* into the image, changing that secret will not change the hash, and `dockem` will keep copying the image built with the old value forward. Don't bake secrets into images &mdash; which is exactly what `--secret` exists to let you avoid.
 
 
 ### Main Version
@@ -305,6 +310,64 @@ while the classic (`--builder=docker`) path is selected, `dockem` logs a warning
 ignores them, since the classic builder has no cache import/export mechanism of its own.
 
 
+### Build Secrets (`--secret`)
+
+`--secret` supplies a BuildKit build secret to `docker buildx build`. Use it when a
+build needs a credential &mdash; a private npm token, a PyPI index password, an SSH
+key &mdash; that must **not** end up in a layer of the finished image. Values are
+passed straight through, one `--secret` flag per value, exactly as you wrote them;
+`dockem` does not interpret or validate their contents, and the flag is repeatable.
+
+Both of buildx's forms work:
+
+- `--secret=id=NAME,src=PATH` &mdash; read the value from a file.
+- `--secret=id=NAME,env=VAR` &mdash; read the value from an environment variable.
+
+The flag is only half of the story: the `Dockerfile` has to mount the secret by the
+same `id`, which makes it readable at `/run/secrets/<id>` for that one `RUN` and
+leaves nothing behind in the image.
+
+```dockerfile
+FROM node:20-alpine
+COPY package.json package-lock.json ./
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc npm ci
+```
+
+```shell
+dockem build \
+  --image-name=my-repo/backend \
+  --dockerfile-path=./apps/backend/Dockerfile \
+  --directory=./apps/backend \
+  --tag=stable \
+  --secret=id=npmrc,src=$HOME/.npmrc
+```
+
+A few things worth knowing:
+
+- **This is buildx-only, and unlike `--cache-from`/`--cache-to` it is a hard error
+  rather than a warning.** If `--secret` is supplied while the classic
+  (`--builder=docker`) path would be selected &mdash; whether because you asked for it
+  explicitly, or because `--builder=auto` found no `buildx` to fall back from &mdash;
+  `dockem` refuses to build. The classic daemon builder has no BuildKit session and
+  cannot mount a secret, so it would hand the `Dockerfile` an *empty*
+  `/run/secrets/<id>` and produce a **different image**, which `dockem` would then
+  publish under its hash tag and copy forward on every later run. A failed build is
+  recoverable; a poisoned hash tag is not.
+- **Relative `src=` paths resolve against `dockem`'s own working directory**, not
+  `--directory`. This is exactly how raw `docker buildx build` behaves, and `dockem`
+  deliberately does not rewrite them.
+- **Keep the secret file out of the build context**, or `.dockerignore` it. A file
+  sitting inside `--directory` feeds the input hash and gets shipped to the daemon,
+  which is the situation `--secret` exists to avoid.
+- **Excluded from the image hash** (see [Cache identity](#cache-identity) above), so
+  rotating a token does not invalidate a single published tag, and adding `--secret`
+  to an existing build does not force a rebuild.
+- **`dockem` never handles the value.** `--secret` carries an id and a *reference* to
+  the value, so nothing sensitive reaches the command line, the logs, or the JSON
+  result. One caveat that is yours rather than `dockem`'s: `buildx` output is streamed
+  to stderr, so a `RUN` that `cat`s a mounted secret will print it into your CI log.
+
+
 ### Output Format
 
 By default (`--output-format=text`), `dockem` just logs its human-readable progress
@@ -384,6 +447,7 @@ There are a few tweaks and features I'd like to implement to improve the overall
  - [ ] Add a Homebrew tap
  - [x] Add the ability to enable `buildx` caching for Github Actions. This could make the builds faster in future.
  - [x] Add the ability to specify the platform(s) you'd like to build for using a `buildx` builder. This would be cool to be able to build ARM images using a standard runner. For now, I recommend deploying a custom ARM runner and building on that (it'll also be a lot faster)
+ - [x] Add the ability to pass BuildKit build secrets (`--secret`) through to `buildx`, so private registries and package tokens can be used at build time without baking them into the image
 
 # The Long Argument
 So now you may ask, why? What's the point?
