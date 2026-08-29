@@ -1,0 +1,4 @@
+Hello world!
+
+This repo has a build/ignored/ directory excluded by .dockerignore. A random
+file lands in there on every test run, but the hash must never move.

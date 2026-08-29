@@ -1,0 +1,5 @@
+# Everything under ignored/ is excluded from both the image hash and the
+# build context sent to the daemon. The e2e test writes a fresh random file
+# into this directory on every run; because it is ignored, that file must
+# never move the hash, and the build should keep hitting the copy path.
+ignored/

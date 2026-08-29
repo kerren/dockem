@@ -64,11 +64,11 @@ Flags:
   -i, --image-name string             (required) The name of the image you are building
   -l, --latest                        Whether to push the latest tag with this image
   -m, --main-version                  Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.
-      --no-respect-dockerignore       Explicitly do NOT respect the .dockerignore file. This is the default today; it exists so a pipeline can pin the old behaviour once the default flips to true in v3.
+      --no-respect-dockerignore       Explicitly do NOT respect the .dockerignore file, opting back into the pre-v3 behaviour of hashing and sending everything in the build directory.
       --output-file string            The path of a file to write the --output-format=json build result to, instead of stdout. Ignored when --output-format is not 'json'.
       --output-format string          The format to print the build result in, either 'text' (the default, today's human-readable logging) or 'json' (an indented JSON BuildResult on stdout, or --output-file if set). $GITHUB_OUTPUT is always written to when set, regardless of this flag. (default "text")
   -r, --registry string               The registry that should be used when pulling/pushing the image, Dockerhub is used by default
-      --respect-dockerignore          Respect the .dockerignore file in the build directory (and any --ignore-file) when hashing the inputs and building the context, excluding matching files from both. Opt-in for now; this default becomes true in v3, which will reset every published hash tag.
+      --respect-dockerignore          Respect the .dockerignore file in the build directory (and any --ignore-file) when hashing the inputs and building the context, excluding matching files from both. Defaults to true as of v3; this reset every published hash tag when it flipped from v2's default of false. (default true)
   -s, --strict-registry               Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.
   -t, --tag stringArray               The tag or tags that should be attached to image
   -F, --version-file string           (required) The name of the JSON file that holds the version to be used in the build. This JSON file must have the 'version' key. (default "./package.json")
@@ -127,13 +127,31 @@ An example of where this may be useful is if you build base images that other Do
 
 
 ### Respecting `.dockerignore`
-By default, every file under the build directory feeds the hash and is streamed to the daemon &mdash; including anything CI generates before the build (`node_modules`, `dist/`, coverage output, `.git/`, and so on), which can quietly change the hash on every run.
+As of `v3`, `--respect-dockerignore` defaults to **`true`**: `dockem` reads the `.dockerignore` at the root of the build directory and applies its patterns to **both** the input hash and the build context. Because the same pattern list drives both, the files that decide whether a build is skipped are exactly the files that get built. Two files are always kept regardless of the patterns: the `Dockerfile` (Docker never lets you ignore it) and `.dockerignore` itself (editing your ignore rules must invalidate the cache).
 
-Passing `--respect-dockerignore` makes `dockem` read the `.dockerignore` at the root of the build directory and apply its patterns to **both** the input hash and the build context. Because the same pattern list drives both, the files that decide whether a build is skipped are exactly the files that get built. Two files are always kept regardless of the patterns: the `Dockerfile` (Docker never lets you ignore it) and `.dockerignore` itself (editing your ignore rules must invalidate the cache).
+Before `v3`, every file under the build directory fed the hash and was streamed to the daemon &mdash; including anything CI generates before the build (`node_modules`, `dist/`, coverage output, `.git/`, and so on), which could quietly change the hash on every run. If you need that behaviour back, pass `--no-respect-dockerignore`.
 
-- `--respect-dockerignore` / `--no-respect-dockerignore` &mdash; turn `.dockerignore` handling on or off. **It is opt-in for now (default off), and the default flips to `true` in `v3`.** When it flips, every previously published hash tag is invalidated and the first `v3` build of each image will be a full rebuild.
+- `--respect-dockerignore` / `--no-respect-dockerignore` &mdash; turn `.dockerignore` handling on or off. **Default `true` as of `v3`** (it was opt-in, default `false`, in `v2`). Pass `--no-respect-dockerignore` to opt back into the pre-`v3` behaviour of hashing and sending everything.
 - `--ignore-file` &mdash; use an alternative ignore file instead of `<directory>/.dockerignore`. Only consulted when `--respect-dockerignore` is set.
 - `--exclude` &mdash; add extra `.dockerignore`-style patterns on the command line, repeatable. These are always applied, even without `--respect-dockerignore`.
+
+See [Cache identity](#cache-identity) below for what flipping this default means for hash tags you published before `v3`.
+
+
+### Cache identity
+The registry tag that decides whether a build is skipped or performed is a hash of everything that feeds it &mdash; the **image hash**. It is the concatenation of, in this fixed order:
+
+1. A hash-format prefix, `dockem-hash-v2` today, identifying the *shape* of everything below it (see below).
+2. Every `--watch-file`, in the order given.
+3. Every `--watch-directory`, sorted, each one minus anything matched by `.dockerignore` / `--ignore-file` / `--exclude` when `--respect-dockerignore` is set.
+4. The build directory (unless `--ignore-build-directory`), likewise minus any `.dockerignore` / `--exclude` matches.
+5. The `Dockerfile`.
+
+That concatenation is then hashed once to produce the image hash used as the registry tag. Change any of the inputs above &mdash; edit a watched file, add a non-ignored file to the build directory, change the Dockerfile, or change what `.dockerignore` excludes &mdash; and the hash changes, so the next build is a real build-and-push rather than a server-side tag copy. Leave all of them the same and the hash repeats, so the build is skipped and the tag is just copied.
+
+The prefix in step 1 exists so a change to *how* the hash is put together (as opposed to what happens to go into it on a given run) can be signalled explicitly. Every release before `v3` used an implicit, unmarked hash format &mdash; `overallHash` simply started as `""`. `v3` is the first release to mark that format, as `dockem-hash-v2`, at the same time as flipping `--respect-dockerignore` to default `true`. Bumping this prefix in some future release resets the cache for every image on purpose, as a deliberate, visible line in that release's diff, rather than silently as a side effect of some unrelated change.
+
+**Upgrading to `v3` invalidates every hash tag your pipelines have ever published**, because both of the changes above &mdash; respecting `.dockerignore` by default and introducing the `dockem-hash-v2` prefix &mdash; change what the hash is computed from. The first `v3` build of every image will be a full build-and-push, even if nothing about the image itself has changed since the last `v2` build. After that first build, caching behaves exactly as before: unchanged inputs mean a cache hit and a tag copy, changed inputs mean a rebuild.
 
 
 ### Main Version

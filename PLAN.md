@@ -545,9 +545,9 @@ this needs no new module: `ignorefile.ReadAll` parses the file and
 Since Phase 3 resets cache identity anyway, this is the right moment to make future
 resets explicit rather than accidental.
 
-- [ ] Define `const hashVersion = "dockem-hash-v2"` in `cli/utils/build_docker_image.go`.
-- [ ] Seed `overallHash` with it before appending any component hashes.
-- [ ] Document in `CLAUDE.md` that this constant must be bumped whenever the
+- [x] Define `const hashVersion = "dockem-hash-v2"` in `cli/utils/build_docker_image.go`.
+- [x] Seed `overallHash` with it before appending any component hashes.
+- [x] Document in `CLAUDE.md` that this constant must be bumped whenever the
       composition of the hash changes.
 
 ### 3.5 Flags and rollout
@@ -559,12 +559,12 @@ resets explicit rather than accidental.
   - [x] `--ignore-file` — path to an alternative ignore file.
   - [x] `--exclude` (string array) — extra patterns, repeatable.
 - [x] Record `excludePatterns` and `respectDockerignore` on `BuildLog` for assertions.
-- [ ] Add an e2e fixture `testing/e2e/dockerignore-test-image/` with a `.dockerignore`
+- [x] Add an e2e fixture `testing/e2e/dockerignore-test-image/` with a `.dockerignore`
       that excludes a directory the test then writes a random file into. The hash must
       stay stable across runs and hit the copy path.
-- [ ] README: document the three flags, and add a "Cache identity" section explaining
+- [x] README: document the three flags, and add a "Cache identity" section explaining
       what feeds the hash and what invalidates it.
-- [ ] Release notes: state plainly that all existing hash tags are invalidated and the
+- [x] Release notes: state plainly that all existing hash tags are invalidated and the
       first v3 build of each image will be a full rebuild.
 
 ---

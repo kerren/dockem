@@ -283,3 +283,56 @@ func TestMainVersion(t *testing.T) {
     }
 
 }
+
+func TestBuildWhereDockerignoreExcludesChangingDirectory(t *testing.T) {
+	// In this test, I'm going to test a build with --respect-dockerignore set
+	// against a fixture whose .dockerignore excludes build/ignored/. I write
+	// a random temp file into that ignored directory on every run - the same
+	// way TestStandardBuildWhereHashDoesNotExist writes one straight into the
+	// build directory to force a new hash - but because this file lands
+	// somewhere .dockerignore excludes, it must NOT feed the hash. So unlike
+	// that test, the hash should already exist and we should hit the copy
+	// path, exactly like TestStandardBuildWhereHashExists.
+	imageName := os.Getenv("TEST_IMAGE_NAME")
+	username := os.Getenv("DOCKER_USERNAME")
+	password := os.Getenv("DOCKER_PASSWORD")
+	if imageName == "" || username == "" || password == "" {
+		t.Fatal("Unable to run test because environment variables are not set")
+	}
+	testDirectory := "../../testing/e2e/dockerignore-test-image"
+	directory := testDirectory + "/build"
+	versionPath := testDirectory + "/version.json"
+	ignoredDirectory := directory + "/ignored"
+
+	tempFile := CreateTempFile(ignoredDirectory, t)
+	defer tempFile.Close()
+	defer os.RemoveAll(tempFile.Name())
+
+	params := BuildDockerImageParams{
+		Directory:            directory,
+		DockerPassword:       password,
+		DockerUsername:       username,
+		DockerfilePath:       directory + "/Dockerfile",
+		IgnoreBuildDirectory: false,
+		ImageName:            imageName,
+		Latest:               false,
+		MainVersion:          false,
+		Registry:             "",
+		RespectDockerignore:  true,
+		Tag:                  []string{"test-dockerignore-hash-exists"},
+		VersionFile:          versionPath,
+		WatchDirectory:       []string{},
+		WatchFile:            []string{},
+	}
+
+	buildLog, err := BuildDockerImage(params)
+	if err != nil {
+		t.Errorf("Error building the docker image: %s", err)
+	}
+	if !buildLog.respectDockerignore {
+		t.Errorf("The build log should record that .dockerignore was respected")
+	}
+	if !buildLog.hashExists {
+		t.Errorf("The hash should exist because the changed file lives in a directory excluded by .dockerignore")
+	}
+}
