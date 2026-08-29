@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"fmt"
-
 	"github.com/regclient/regclient/types/ref"
 	"golang.org/x/mod/sumdb/dirhash"
 )
@@ -34,7 +32,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	if !params.IgnoreBuildDirectory {
 		directoryHash, err := dirhash.HashDir(params.Directory, "", dirhash.Hash1)
 		if err != nil {
-			fmt.Printf("ERROR: An error ocurred when hashing the build directory, please ensure it exists and is not empty. You specified %s as the directory\n", params.Directory)
+			LogError("An error ocurred when hashing the build directory, please ensure it exists and is not empty. You specified %s as the directory\n", params.Directory)
 			return buildLog, err
 		}
 		overallHash += directoryHash
@@ -43,7 +41,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	// Hash the Dockerfile
 	dockerfileHash, err := dirhash.Hash1([]string{params.DockerfilePath}, osOpen)
 	if err != nil {
-		fmt.Printf("ERROR: An error ocurred when hashing the Dockerfile, please ensure it exists. You specified %s as the Dockerfile\n", params.DockerfilePath)
+		LogError("An error ocurred when hashing the Dockerfile, please ensure it exists. You specified %s as the Dockerfile\n", params.DockerfilePath)
 		return buildLog, err
 	}
 	overallHash += dockerfileHash
@@ -73,7 +71,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	imageName := GenerateDockerImageName(params.Registry, params.ImageName, imageHash)
 	r, err := ref.New(imageName)
 	if err != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to parse the image: %s\n", imageName)
+		LogError("An error ocurred when trying to parse the image: %s\n", imageName)
 		return buildLog, err
 	}
 	buildLog.hashedImageName = imageName
@@ -84,7 +82,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 	buildLog.hashExists = exists
 
 	if exists {
-		fmt.Printf("The image hash %s already exists on the registry, we can now copy this to the other tags!\n", imageHash)
+		LogInfo("The image hash %s already exists on the registry, we can now copy this to the other tags!\n", imageHash)
 		// If the image already exists, we just need to copy the tags across
 		copyError := CopyExistingImageTag(params, version, imageName, &client, &buildLog)
 		if copyError != nil {
@@ -92,7 +90,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 		}
 	} else {
 		// We need to build the image and then we push it to the registry
-		fmt.Printf("The image hash %s does not exist on the registry, we will now build the image and push it to the registry\n", imageHash)
+		LogInfo("The image hash %s does not exist on the registry, we will now build the image and push it to the registry\n", imageHash)
 
 		dockerClient, pushOptions, err := CreateDockerClient(params.DockerUsername, params.DockerPassword, params.Registry)
 		if err != nil {
@@ -108,7 +106,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 		}
 		buildLog.localTag = localTag
 
-		fmt.Print("Docker build complete, pushing the image to the registry\n")
+		LogInfo("Docker build complete, pushing the image to the registry\n")
 
 		// Now we push the hashed image and then all of the other tags that the
 		// user has specified
@@ -117,7 +115,7 @@ func BuildDockerImage(params BuildDockerImageParams) (BuildLog, error) {
 			return buildLog, hashedImageNameError
 		}
 
-		fmt.Printf("The image has been pushed to the registry with the hash %s\n", imageName)
+		LogInfo("The image has been pushed to the registry with the hash %s\n", imageName)
 
 		// Now that the hashed image has been pushed, we can push all of the other tags
 		tagAndPushImagesError := TagAndPushNewImages(params, version, localTag, dockerClient, pushOptions, &buildLog)
