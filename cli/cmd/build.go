@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dockem/utils"
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -111,12 +110,10 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		writeErr := utils.WriteBuildOutput(buildResult, outputFormat, outputFile)
 
 		if buildErr != nil {
-			// The blank line before the panic trace is only for the human-
-			// readable text format - --output-format=json must have nothing
-			// but JSON on stdout, which the panic below writes to stderr.
-			if outputFormat != "json" {
-				fmt.Print("\n\n")
-			}
+			// The blank line separating the logs from the panic trace is
+			// human-readable output, so it goes to stderr through LogInfo and
+			// leaves stdout holding nothing but the JSON result.
+			utils.LogInfo("\n\n")
 			panic(buildErr)
 		}
 
