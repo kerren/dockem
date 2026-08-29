@@ -7,6 +7,9 @@ import (
 	"github.com/regclient/regclient/types/ref"
 )
 
+// CopyDockerImage Copies a Docker image within the same registry or across registries.
+// If the source and destination are in the same registry, it uses manifest re-tagging
+// to optimize the copy process without pulling and pushing layers.
 func CopyDockerImage(client *regclient.RegClient, fromImageName string, toImageName string) error {
 	rFrom, errFrom := ref.New(fromImageName)
 	if errFrom != nil {

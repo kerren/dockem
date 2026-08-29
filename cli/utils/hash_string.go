@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// HashString Hashes the given string using SHA256
 func HashString(s string) string {
 	sha256Hash := sha256.New()
 	sha256Hash.Write([]byte(s))

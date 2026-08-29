@@ -23,7 +23,10 @@ import (
 // "Cache identity" section for the consequences.
 const hashVersion = "dockem-hash-v2"
 
-// BuildDockerImage returns named results (rather than the usual unnamed
+// BuildDockerImage builds a Docker image or reuses an existing one based on
+// content hashing.
+//
+// It returns named results (rather than the usual unnamed
 // (BuildLog, error)) purely so the deferred func below can record the
 // duration on buildLog no matter which of the many return statements below
 // is hit - including the early-return error paths, so BuildResult.DurationMs

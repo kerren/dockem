@@ -5,6 +5,9 @@ import (
 	"os"
 )
 
+// ExtractVersion Expects a path to a JSON file that contains a `version` key.
+// This key is parsed and returned with a `v` prefix.
+// Example v1.0.0
 func ExtractVersion(versionFilePath string) (string, error) {
 
 	versionFile, versionFileError := os.Open(versionFilePath)

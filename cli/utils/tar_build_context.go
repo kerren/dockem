@@ -11,6 +11,9 @@ import (
 	"github.com/docker/docker/pkg/archive"
 )
 
+// TarBuildContext Creates a gzipped tarball of the build context, including the Dockerfile and associated files.
+// The excludePatterns are the same list that fed the input hash, so the files
+// streamed to the builder are exactly the files that were hashed.
 func TarBuildContext(params BuildDockerImageParams, excludePatterns []string, dockerClient *client.Client, buildLog *BuildLog) (io.Reader, string, error) {
 
 	absDirectoryPath, absDirectoryPathError := filepath.Abs(params.Directory)

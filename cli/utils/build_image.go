@@ -11,6 +11,10 @@ import (
 	"github.com/moby/term"
 )
 
+// BuildImage builds a Docker image using the provided build context tarball. It
+// will name the image local:imageHash. The excludePatterns are resolved once in
+// BuildDockerImage and threaded through to TarBuildContext so that the files
+// streamed to the daemon are exactly the files that fed the hash.
 func BuildImage(params BuildDockerImageParams, imageHash string, excludePatterns []string, dockerClient *client.Client, buildLog *BuildLog) (string, error) {
 
 	reader, relativeDockerfilePath, readerErr := TarBuildContext(params, excludePatterns, dockerClient, buildLog)
