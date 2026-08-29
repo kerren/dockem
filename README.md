@@ -233,9 +233,38 @@ builder, `dockem` **errors out** rather than silently building a single-architec
 image and publishing it under a tag that looks multi-arch &mdash; a single-arch image
 hiding behind a multi-arch tag is worse than a failed build.
 
-> **Note:** on this release `--builder` and `--platform` are wired up to *resolve* the
-> builder and report the decision; the `buildx` build path itself lands in a following
-> change, so builds still run through the classic daemon builder for now.
+When the `buildx` path is used, `dockem` builds every requested platform and pushes the
+hash tag and every one of your tags in a single `docker buildx build --push`. The
+platform list is folded into the hash, so switching from `linux/amd64` to
+`linux/amd64,linux/arm64` produces a new hash and triggers a rebuild &mdash; you can't
+accidentally keep copying a single-arch image forward under a multi-arch request. A
+build with **no** `--platform` hashes exactly as it did before multi-platform support,
+so single-platform users are unaffected.
+
+If you pass `--docker-username`/`--docker-password`, `dockem` writes those credentials
+to a throwaway `config.json` and hands it to the `buildx` subprocess through
+`DOCKER_CONFIG` for that one command only &mdash; it never touches your real
+`~/.docker/config.json`. With no credential flags, an existing `docker login` is used as-is.
+
+#### Multi-architecture example
+
+Build `linux/amd64` and `linux/arm64` in one go and push them as a single multi-arch
+tag (this needs `docker buildx`; on GitHub-hosted runners it is already present):
+
+```shell
+dockem build \
+  --image-name=my-repo/backend \
+  --dockerfile-path=./apps/backend/Dockerfile \
+  --directory=./apps/backend \
+  --platform=linux/amd64,linux/arm64 \
+  --tag=stable \
+  --latest
+```
+
+The pushed `my-repo/backend:stable-vX.Y.Z` and `my-repo/backend:latest` are manifest
+lists carrying both architectures. On the next run with the same inputs the hash already
+exists, so `dockem` copies the whole multi-arch index to your tags registry-side &mdash;
+no rebuild, no pull, no push.
 
 
 ### Output Format
@@ -288,7 +317,7 @@ The following keys are written:
 | `version` | The version extracted from the version file, eg. `v1.0.0`. |
 | `primary-tag` | The first tag that was pushed or copied - typically the one you want to deploy. |
 | `tags` | Every tag that was pushed or copied, comma-separated. |
-| `platforms` | The platform(s) the image was built for, comma-separated. Empty until multi-platform builds are supported. |
+| `platforms` | The platform(s) the image was built for, comma-separated. Empty for a single-platform build (no `--platform`); set to the requested list, eg. `linux/amd64,linux/arm64`, for a multi-platform build. |
 
 Here's a worked example that skips the deploy step entirely on a cache hit, and
 otherwise deploys the primary tag,
