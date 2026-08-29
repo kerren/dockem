@@ -1,0 +1,4 @@
+This file exists only so git tracks this otherwise-empty directory. The e2e
+test creates a random test_file_* here on every run; .dockerignore excludes
+the whole directory, so none of that - including this file - ever feeds the
+image hash or the build context.

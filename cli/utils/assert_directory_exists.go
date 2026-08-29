@@ -15,7 +15,7 @@ func AssertDirectoryExists(path string, errorMessage string) {
 	absDirectory, _ := filepath.Abs(path)
 	if exists, _ := DirectoryExists(absDirectory); !exists {
 		outputMessage := fmt.Sprintf(errorMessage, absDirectory)
-		fmt.Println(outputMessage)
+		LogInfo("%s\n", outputMessage)
 		os.Exit(1)
 	}
 }

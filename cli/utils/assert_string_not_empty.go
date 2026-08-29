@@ -13,6 +13,6 @@ func AssertStringNotEmpty(str string, flag string, errorMessage string) {
 		errorMessage = "ERROR: The string for flag '%s' was not specified."
 	}
 	outputMessage := fmt.Sprintf(errorMessage, flag)
-	fmt.Println(outputMessage)
+	LogInfo("%s\n", outputMessage)
 	os.Exit(1)
 }

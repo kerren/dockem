@@ -15,7 +15,7 @@ func AssertFileExists(path string, errorMessage string) {
 	absFilePath, _ := filepath.Abs(path)
 	if exists, _ := FileExists(absFilePath); !exists {
 		outputMessage := fmt.Sprintf(errorMessage, absFilePath)
-		fmt.Println(outputMessage)
+		LogInfo("%s\n", outputMessage)
 		os.Exit(1)
 	}
 }

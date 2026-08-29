@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/docker/docker/api/types"
@@ -17,13 +16,13 @@ func TagAndPushImage(fromImage string, toImage string, dockerClient *client.Clie
 
 	tagErr := dockerClient.ImageTag(context.Background(), fromImage, toImage)
 	if tagErr != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to tag the image from %s to %s\n", fromImage, toImage)
+		LogError("An error ocurred when trying to tag the image from %s to %s\n", fromImage, toImage)
 		return tagErr
 	}
 
 	reader, pushError := dockerClient.ImagePush(context.Background(), toImage, pushOptions)
 	if pushError != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to push the image: %s\n", toImage)
+		LogError("An error ocurred when trying to push the image: %s\n", toImage)
 		return pushError
 	}
 	termFd, isTerm := term.GetFdInfo(os.Stderr)
