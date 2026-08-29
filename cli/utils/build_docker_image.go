@@ -35,11 +35,6 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 		buildLog.durationMs = time.Since(startTime).Milliseconds()
 	}()
 
-	// I create a string that I append all of the hashes to. Seeding it with
-	// hashVersion namespaces every hash this build of dockem produces to that
-	// hash format - see the comment on hashVersion above.
-	overallHash := hashVersion
-
 	// Filter out any empty tags
 	params.Tag = RemoveEmptyStringsFromArray(params.Tag)
 
@@ -62,12 +57,26 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 	if builderPreference != "docker" {
 		buildxAvailable, buildxVersion, _ = DetectBuildx()
 	}
-	resolvedBuilder, resolveBuilderError := ResolveBuilder(builderPreference, params.Platform, buildxAvailable, buildxVersion)
+	resolvedBuilder, resolveBuilderError := ResolveBuilder(builderPreference, params.Platform, buildxAvailable, buildxVersion, len(params.Secret) > 0)
 	if resolveBuilderError != nil {
 		return buildLog, resolveBuilderError
 	}
 	buildLog.builder = resolvedBuilder
 	buildLog.platforms = params.Platform
+
+	// I create a string that I append all of the hashes to. Seeding it with
+	// hashVersion namespaces every hash this build of dockem produces to that
+	// hash format - see the comment on hashVersion above.
+	//
+	// This seed deliberately sits BELOW the builder resolution above rather than
+	// at the top of the function. The span from here to "imageHash :=
+	// HashString(overallHash)" is what TestCacheFromCacheToExcludedFromImageHash
+	// and TestSecretsExcludedFromImageHash read as source to prove the
+	// buildx-passthrough flags never feed the hash, and the ResolveBuilder call
+	// above legitimately mentions params.Secret. Keeping the seed below it keeps
+	// that span to the hash computation alone. Nothing reads overallHash before
+	// this point, so the move is inert.
+	overallHash := hashVersion
 
 	// Resolve the ignore/exclude patterns ONCE. The exact same slice feeds the
 	// input hash (HashDirectory / HashWatchDirectories) and the build-context
@@ -134,6 +143,28 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 	// can now hash this string to create a unique hash for the image.
 	imageHash := HashString(overallHash)
 	buildLog.imageHash = imageHash
+
+	// --cache-from/--cache-to only take effect on the buildx build path (see
+	// assembleBuildxArgs in build_image_buildx.go) - warn instead of silently
+	// ignoring them so a run that resolved to the classic builder doesn't leave
+	// a caller wondering why eg. their GitHub Actions cache is never reused.
+	// This deliberately sits AFTER imageHash is computed above, never before:
+	// these flags affect build speed only and must never feed overallHash.
+	//
+	// --secret is deliberately NOT mentioned here. It is buildx-only too, but it
+	// changes what the build produces rather than how fast it runs, so it is a
+	// hard error in ResolveBuilder above rather than a warning - by the time we
+	// reach this line, a run with secrets has already resolved to buildx.
+	if resolvedBuilder != "buildx" && (len(params.CacheFrom) > 0 || len(params.CacheTo) > 0) {
+		var ignoredCacheFlags []string
+		if len(params.CacheFrom) > 0 {
+			ignoredCacheFlags = append(ignoredCacheFlags, "--cache-from")
+		}
+		if len(params.CacheTo) > 0 {
+			ignoredCacheFlags = append(ignoredCacheFlags, "--cache-to")
+		}
+		LogWarn("%s set but the resolved builder is '%s', not buildx - cache import/export only applies to the buildx build path and will be ignored for this run.\n", strings.Join(ignoredCacheFlags, " and "), resolvedBuilder)
+	}
 
 	// Now we need to open the version file (JSON file) and pull out the "version" key
 	version, versionError := ExtractVersion(params.VersionFile)

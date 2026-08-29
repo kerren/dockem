@@ -439,3 +439,129 @@ func TestMultiPlatformBuildCopiesImageIndex(t *testing.T) {
 		}
 	}
 }
+
+func TestSinglePlatformBuildxBuildHashMissThenHashHit(t *testing.T) {
+	// This is the Phase 4.8 end-to-end check for the buildx path on a single
+	// platform. TestMultiPlatformBuildCopiesImageIndex (Phase 4.6) already
+	// covers two platforms and the manifest-list copy path, so this test's job
+	// is narrower: prove the buildx path behaves like every other build path in
+	// this file for the ordinary hash-miss-then-hash-hit cycle. A fresh input
+	// (the temp file below) must build and push through buildx (hashExists
+	// false, builder "buildx"), and re-running the identical build against the
+	// same inputs must take the copy path instead (hashExists true) rather than
+	// building again.
+	//
+	// Like the other tests in this file it requires a real registry (and, here,
+	// buildx), so it t.Fatal's when the credentials are absent and is never run
+	// in environments without them.
+	imageName := os.Getenv("TEST_IMAGE_NAME")
+	username := os.Getenv("DOCKER_USERNAME")
+	password := os.Getenv("DOCKER_PASSWORD")
+	if imageName == "" || username == "" || password == "" {
+		t.Fatal("Unable to run test because environment variables are not set")
+	}
+	testDirectory := "../../testing/e2e/base-changing-test-image"
+	directory := testDirectory + "/build"
+	versionPath := testDirectory + "/version.json"
+
+	tempFile := CreateTempFile(directory, t)
+	defer tempFile.Close()
+	defer os.RemoveAll(tempFile.Name())
+
+	params := BuildDockerImageParams{
+		Builder:        "buildx",
+		Directory:      directory,
+		DockerPassword: password,
+		DockerUsername: username,
+		DockerfilePath: directory + "/Dockerfile",
+		ImageName:      imageName,
+		Platform:       []string{"linux/amd64"},
+		Registry:       "",
+		Tag:            []string{"buildx-single-platform"},
+		VersionFile:    versionPath,
+		WatchDirectory: []string{},
+		WatchFile:      []string{},
+	}
+
+	// First run: the temp file above guarantees a fresh hash, so this must
+	// build (through buildx) and push rather than copy.
+	firstLog, firstErr := BuildDockerImage(params)
+	if firstErr != nil {
+		t.Fatalf("Error on the first (build) run of the single-platform buildx image: %s", firstErr)
+	}
+	if firstLog.builder != "buildx" {
+		t.Fatalf("Expected the buildx builder to be selected, got %q", firstLog.builder)
+	}
+	if firstLog.hashExists {
+		t.Fatalf("The hash should not exist on the first run - the temp file in the build directory should have forced a fresh hash")
+	}
+	if len(firstLog.outputTags) == 0 {
+		t.Fatalf("The build run should have recorded at least one output tag")
+	}
+
+	// Second run: identical inputs (same temp file, same params), so the hash
+	// from the first run must already exist and this takes the copy path.
+	secondLog, secondErr := BuildDockerImage(params)
+	if secondErr != nil {
+		t.Fatalf("Error on the second (copy) run of the single-platform buildx image: %s", secondErr)
+	}
+	if !secondLog.hashExists {
+		t.Fatalf("The hash should exist on the second run so the copy path is exercised")
+	}
+	if secondLog.imageHash != firstLog.imageHash {
+		t.Fatalf("The two runs over identical inputs produced different hashes: %q vs %q", firstLog.imageHash, secondLog.imageHash)
+	}
+}
+
+func TestBuilderDockerForcesClassicPathUnchanged(t *testing.T) {
+	// Phase 4.8: --builder=docker must still exercise the classic (docker
+	// daemon) build-and-push path unchanged, even now that buildx is available
+	// and auto-resolves to it by default (see ResolveBuilder). This mirrors
+	// TestStandardBuildWhereHashDoesNotExist, but pins Builder: "docker"
+	// explicitly and additionally asserts on buildLog.builder and
+	// buildLog.localTag - localTag is only ever set on the classic path
+	// (BuildImage -> TagAndPushImage -> TagAndPushNewImages); the buildx path
+	// (BuildImageBuildx) never touches it - so a non-empty localTag here is
+	// direct proof the classic path ran rather than buildx.
+	imageName := os.Getenv("TEST_IMAGE_NAME")
+	username := os.Getenv("DOCKER_USERNAME")
+	password := os.Getenv("DOCKER_PASSWORD")
+	if imageName == "" || username == "" || password == "" {
+		t.Fatal("Unable to run test because environment variables are not set")
+	}
+	testDirectory := "../../testing/e2e/base-changing-test-image"
+	directory := testDirectory + "/build"
+	versionPath := testDirectory + "/version.json"
+
+	tempFile := CreateTempFile(directory, t)
+	defer tempFile.Close()
+	defer os.RemoveAll(tempFile.Name())
+
+	params := BuildDockerImageParams{
+		Builder:        "docker",
+		Directory:      directory,
+		DockerPassword: password,
+		DockerUsername: username,
+		DockerfilePath: directory + "/Dockerfile",
+		ImageName:      imageName,
+		Registry:       "",
+		Tag:            []string{"builder-docker-classic"},
+		VersionFile:    versionPath,
+		WatchDirectory: []string{},
+		WatchFile:      []string{},
+	}
+
+	buildLog, err := BuildDockerImage(params)
+	if err != nil {
+		t.Errorf("Error building the docker image: %s", err)
+	}
+	if buildLog.builder != "docker" {
+		t.Errorf("Expected --builder=docker to resolve to the classic 'docker' builder, got %q", buildLog.builder)
+	}
+	if buildLog.hashExists {
+		t.Errorf("The hash should not exist - the temp file in the build directory should have forced a fresh hash")
+	}
+	if buildLog.localTag == "" {
+		t.Errorf("The classic path must set buildLog.localTag (BuildImage -> TagAndPushImage); an empty value suggests the buildx path ran instead")
+	}
+}
