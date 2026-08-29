@@ -11,9 +11,9 @@ import (
 	"github.com/moby/term"
 )
 
-func BuildImage(params BuildDockerImageParams, imageHash string, dockerClient *client.Client, buildLog *BuildLog) (string, error) {
+func BuildImage(params BuildDockerImageParams, imageHash string, excludePatterns []string, dockerClient *client.Client, buildLog *BuildLog) (string, error) {
 
-	reader, relativeDockerfilePath, readerErr := TarBuildContext(params, dockerClient, buildLog)
+	reader, relativeDockerfilePath, readerErr := TarBuildContext(params, excludePatterns, dockerClient, buildLog)
 	if readerErr != nil {
 		return "", readerErr
 	}

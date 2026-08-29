@@ -22,10 +22,30 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 	// I create a string that I append all of the hashes to
 	overallHash := ""
 
-    // Filter out any empty tags
-    params.Tag = RemoveEmptyStringsFromArray(params.Tag)
+	// Filter out any empty tags
+	params.Tag = RemoveEmptyStringsFromArray(params.Tag)
 
 	buildLog = BuildLog{}
+	buildLog.respectDockerignore = params.RespectDockerignore
+
+	// Resolve the ignore/exclude patterns ONCE. The exact same slice feeds the
+	// input hash (HashDirectory / HashWatchDirectories) and the build-context
+	// tar (TarBuildContext). If those two ever derived from different lists,
+	// dockem would build something other than what it hashed - the worst
+	// failure this tool can have.
+	var excludePatterns []string
+	if params.RespectDockerignore {
+		resolvedPatterns, ignoreError := ReadDockerignore(params.Directory, params.IgnoreFile, params.Exclude)
+		if ignoreError != nil {
+			return buildLog, ignoreError
+		}
+		excludePatterns = resolvedPatterns
+	} else {
+		// Respecting .dockerignore is opt-in for now (this release defaults it
+		// off), but an explicit --exclude is always honoured.
+		excludePatterns = append(excludePatterns, params.Exclude...)
+	}
+	buildLog.excludePatterns = excludePatterns
 
 	// Hash the watch files if they exist
 	hashWatchFileResult, hashWatchFileError := HashWatchFiles(params.WatchFile)
@@ -35,7 +55,7 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 	overallHash += hashWatchFileResult
 
 	// Hash the watch directories if they exist
-	watchDirectoriesHash, watchDirectoriesHashError := HashWatchDirectories(params.WatchDirectory)
+	watchDirectoriesHash, watchDirectoriesHashError := HashWatchDirectories(params.WatchDirectory, excludePatterns)
 	if watchDirectoriesHashError != nil {
 		return buildLog, watchDirectoriesHashError
 	}
@@ -43,7 +63,7 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 
 	// Hash the build directory if the ignore flag has not been specified
 	if !params.IgnoreBuildDirectory {
-		directoryHash, err := dirhash.HashDir(params.Directory, "", dirhash.Hash1)
+		directoryHash, err := HashDirectory(params.Directory, excludePatterns)
 		if err != nil {
 			LogError("An error ocurred when hashing the build directory, please ensure it exists and is not empty. You specified %s as the directory\n", params.Directory)
 			return buildLog, err
@@ -127,7 +147,7 @@ func BuildDockerImage(params BuildDockerImageParams) (buildLog BuildLog, err err
 		defer dockerClient.Close()
 
 		// Build the image
-		localTag, dockerImageBuildError := BuildImage(params, imageHash, dockerClient, &buildLog)
+		localTag, dockerImageBuildError := BuildImage(params, imageHash, excludePatterns, dockerClient, &buildLog)
 
 		if dockerImageBuildError != nil {
 			return buildLog, dockerImageBuildError

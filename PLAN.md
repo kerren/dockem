@@ -498,46 +498,46 @@ this needs no new module: `ignorefile.ReadAll` parses the file and
 
 ### 3.1 Read and match the ignore patterns
 
-- [ ] Promote `github.com/moby/patternmatcher` to a direct dependency in `cli/go.mod`.
-- [ ] Add `cli/utils/read_dockerignore.go` with
+- [x] Promote `github.com/moby/patternmatcher` to a direct dependency in `cli/go.mod`.
+- [x] Add `cli/utils/read_dockerignore.go` with
       `ReadDockerignore(contextDir string) ([]string, error)`:
-  - [ ] Read `<contextDir>/.dockerignore` via `ignorefile.ReadAll`.
-  - [ ] Return an empty slice and no error when the file is absent.
-  - [ ] Honour an override path from `--ignore-file`.
-- [ ] Append any `--exclude` patterns supplied on the command line to the parsed set.
+  - [x] Read `<contextDir>/.dockerignore` via `ignorefile.ReadAll`.
+  - [x] Return an empty slice and no error when the file is absent.
+  - [x] Honour an override path from `--ignore-file`.
+- [x] Append any `--exclude` patterns supplied on the command line to the parsed set.
 
 ### 3.2 Hash with exclusions
 
-- [ ] Add `cli/utils/hash_directory.go` with
+- [x] Add `cli/utils/hash_directory.go` with
       `HashDirectory(dir string, excludePatterns []string) (string, error)`:
-  - [ ] List candidates with `dirhash.DirFiles(dir, "")`.
-  - [ ] Build a `patternmatcher.New(excludePatterns)` and drop any file where
+  - [x] List candidates with `dirhash.DirFiles(dir, "")`.
+  - [x] Build a `patternmatcher.New(excludePatterns)` and drop any file where
         `MatchesOrParentMatches(file)` is true.
-  - [ ] **Always retain `Dockerfile` and `.dockerignore`** even if a pattern excludes
+  - [x] **Always retain `Dockerfile` and `.dockerignore`** even if a pattern excludes
         them — this mirrors Docker's own behaviour, and a change to `.dockerignore`
         must invalidate the cache because it changes what is included.
-  - [ ] Hash the surviving list with `dirhash.Hash1` and an `open` closure that joins
+  - [x] Hash the surviving list with `dirhash.Hash1` and an `open` closure that joins
         `dir` (the same one `dirhash.HashDir` uses internally).
-  - [ ] Skip broken symlinks instead of hard-failing. Today a dangling link anywhere
+  - [x] Skip broken symlinks instead of hard-failing. Today a dangling link anywhere
         under the build directory makes `os.Open` error and aborts the whole hash.
-- [ ] Replace the `dirhash.HashDir` call in `build_docker_image.go` with `HashDirectory`.
-- [ ] Apply the same exclusions in `HashWatchDirectories` so watch directories behave
+- [x] Replace the `dirhash.HashDir` call in `build_docker_image.go` with `HashDirectory`.
+- [x] Apply the same exclusions in `HashWatchDirectories` so watch directories behave
       consistently with the build directory.
-- [ ] Add `cli/utils/hash_directory_test.go` — pure unit tests over a `t.TempDir()`:
-  - [ ] A file matching a pattern does not change the hash.
-  - [ ] A file not matching a pattern does change the hash.
-  - [ ] A negation pattern (`!keep.txt`) re-includes a file.
-  - [ ] Editing `.dockerignore` itself changes the hash.
-  - [ ] A broken symlink does not fail the hash.
+- [x] Add `cli/utils/hash_directory_test.go` — pure unit tests over a `t.TempDir()`:
+  - [x] A file matching a pattern does not change the hash.
+  - [x] A file not matching a pattern does change the hash.
+  - [x] A negation pattern (`!keep.txt`) re-includes a file.
+  - [x] Editing `.dockerignore` itself changes the hash.
+  - [x] A broken symlink does not fail the hash.
 
 ### 3.3 Exclude from the build context tar
 
-- [ ] In `TarBuildContext`, pass the same patterns as
+- [x] In `TarBuildContext`, pass the same patterns as
       `archive.TarOptions{ExcludePatterns: patterns}`.
-- [ ] Ensure the temporary Dockerfile written for the out-of-context case is never
+- [x] Ensure the temporary Dockerfile written for the out-of-context case is never
       excluded — it is created inside the context directory with a `Dockerfile.` prefix
       and a pattern such as `Dockerfile*` would otherwise drop it and break the build.
-- [ ] Sanity-check that the tar and the hash are computed from the *same* pattern list,
+- [x] Sanity-check that the tar and the hash are computed from the *same* pattern list,
       so the thing that was hashed is the thing that gets built.
 
 ### 3.4 Hash version prefix
@@ -552,13 +552,13 @@ resets explicit rather than accidental.
 
 ### 3.5 Flags and rollout
 
-- [ ] Add to `BuildDockerImageParams`: `RespectDockerignore bool`, `IgnoreFile string`,
+- [x] Add to `BuildDockerImageParams`: `RespectDockerignore bool`, `IgnoreFile string`,
       `Exclude []string`.
-- [ ] Add flags to `cli/cmd/build.go`:
-  - [ ] `--respect-dockerignore` / `--no-respect-dockerignore` (**default `true`** in v3).
-  - [ ] `--ignore-file` — path to an alternative ignore file.
-  - [ ] `--exclude` (string array) — extra patterns, repeatable.
-- [ ] Record `excludePatterns` and `respectDockerignore` on `BuildLog` for assertions.
+- [x] Add flags to `cli/cmd/build.go`:
+  - [x] `--respect-dockerignore` / `--no-respect-dockerignore` (**default `true`** in v3).
+  - [x] `--ignore-file` — path to an alternative ignore file.
+  - [x] `--exclude` (string array) — extra patterns, repeatable.
+- [x] Record `excludePatterns` and `respectDockerignore` on `BuildLog` for assertions.
 - [ ] Add an e2e fixture `testing/e2e/dockerignore-test-image/` with a `.dockerignore`
       that excludes a directory the test then writes a random file into. The hash must
       stay stable across runs and hit the copy path.
