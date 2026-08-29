@@ -53,21 +53,23 @@ Usage:
 
 
 Flags:
-  -d, --directory string                 (required) The directory that should be used as the context for the Docker build (default "./")
-  -p, --docker-password string           The password that should be used to authenticate the docker client. Ignore if you have already logged in.
-  -u, --docker-username string           The username that should be used to authenticate the docker client. Ignore if you have already logged in.
-  -f, --dockerfile-path string           (required) The path to the Dockerfile that should be used to build the image (default "./Dockerfile")
-  -h, --help                             help for build
-  -I, --ignore-build-directory           Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.
-  -i, --image-name string                (required) The name of the image you are building
-  -l, --latest                           Whether to push the latest tag with this image
-  -m, --main-version                     Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.
-  -r, --registry string                  The registry that should be used when pulling/pushing the image, Dockerhub is used by default
-  -s, --strict-registry                  Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.
-  -t, --tag stringArray                  The tag or tags that should be attached to image
-  -F, --version-file string              (required) The name of the JSON file that holds the version to be used in the build. This JSON file must have the 'version' key. (default "./package.json")
-  -W, --watch-directory stringArray      Watch for changes in a directory or directories
-  -w, --watch-file stringArray           Watch for changes on a specific file or files
+  -d, --directory string              (required) The directory that should be used as the context for the Docker build (default "./")
+  -p, --docker-password string        The password that should be used to authenticate the docker client. Ignore if you have already logged in.
+  -u, --docker-username string        The username that should be used to authenticate the docker client. Ignore if you have already logged in.
+  -f, --dockerfile-path string        (required) The path to the Dockerfile that should be used to build the image (default "./Dockerfile")
+  -h, --help                          help for build
+  -I, --ignore-build-directory        Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.
+  -i, --image-name string             (required) The name of the image you are building
+  -l, --latest                        Whether to push the latest tag with this image
+  -m, --main-version                  Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.
+      --output-file string            The path of a file to write the --output-format=json build result to, instead of stdout. Ignored when --output-format is not 'json'.
+      --output-format string          The format to print the build result in, either 'text' (the default, today's human-readable logging) or 'json' (an indented JSON BuildResult on stdout, or --output-file if set). $GITHUB_OUTPUT is always written to when set, regardless of this flag. (default "text")
+  -r, --registry string               The registry that should be used when pulling/pushing the image, Dockerhub is used by default
+  -s, --strict-registry               Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.
+  -t, --tag stringArray               The tag or tags that should be attached to image
+  -F, --version-file string           (required) The name of the JSON file that holds the version to be used in the build. This JSON file must have the 'version' key. (default "./package.json")
+  -W, --watch-directory stringArray   Watch for changes in a directory or directories
+  -w, --watch-file stringArray        Watch for changes on a specific file or files
 
 ```
 
@@ -79,6 +81,8 @@ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/
 dockem build --directory=./apps/backend --watch-directory=./libs/shared --dockerfile-path=./apps/backend/Dockerfile --image-name=my-repo/backend --tag=dev --latest
 
 dockem build --image-name=my-repo/backend --registry=eu.reg.io --docker-username=uname --docker-password=1234 --tag=alpha --tag=test
+
+dockem build --image-name=my-repo/backend --tag=stable --output-format=json | jq -r '.primaryTag'
 ```
 
 ## Usage in Actions
@@ -170,6 +174,75 @@ other than the hash genuinely not existing, the build aborts immediately instead
 proceeding. This is useful in CI/CD pipelines where you'd rather fail fast on a
 credentials or registry problem than pay for a full build and push that may well fail
 again at the push step for the same reason.
+
+
+### Output Format
+
+By default (`--output-format=text`), `dockem` just logs its human-readable progress
+to stderr as it runs, exactly as it always has.
+
+Passing `--output-format=json` additionally prints an indented JSON object describing
+the result of the build to stdout once the build finishes - or to the file given by
+`--output-file`, instead of stdout, if you'd rather not deal with capturing it from a
+subprocess. Nothing else is written to stdout in this mode, so it's always safe to
+pipe straight into something like `jq`.
+
+```shell
+$ dockem build --image-name=my-repo/backend --tag=stable --output-format=json | jq .
+{
+  "hash": "1a2b3c4d5e6f...",
+  "cacheHit": true,
+  "image": "my-repo/backend:1a2b3c4d5e6f...",
+  "version": "v1.0.0",
+  "tags": [
+    "my-repo/backend:stable-v1.0.0"
+  ],
+  "primaryTag": "my-repo/backend:stable-v1.0.0",
+  "platforms": [],
+  "registry": "",
+  "durationMs": 842
+}
+```
+
+If the build fails, `dockem` still writes whatever it managed to compute before the
+failure (eg. the hash, if it got that far) as JSON before it exits non-zero, so a
+pipeline can tell how far the build got even when something went wrong.
+
+### GitHub Actions Output
+
+Whenever the `$GITHUB_OUTPUT` environment variable is set - which GitHub Actions sets
+automatically for every step - `dockem build` appends its result to that file as step
+outputs on a successful build, regardless of `--output-format`. This is what lets a
+later step in the same job reference eg. `steps.<id>.outputs.primary-tag` without
+having to scrape it out of the logs.
+
+The following keys are written:
+
+| Key | Description |
+|---|---|
+| `hash` | The computed image hash used as the cache key. |
+| `cache-hit` | `"true"` if the hash already existed on the registry (the build was skipped and the tag copied instead), `"false"` if a build actually happened. |
+| `image` | The fully-qualified `image:hash` name that was checked/pushed. |
+| `version` | The version extracted from the version file, eg. `v1.0.0`. |
+| `primary-tag` | The first tag that was pushed or copied - typically the one you want to deploy. |
+| `tags` | Every tag that was pushed or copied, comma-separated. |
+| `platforms` | The platform(s) the image was built for, comma-separated. Empty until multi-platform builds are supported. |
+
+Here's a worked example that skips the deploy step entirely on a cache hit, and
+otherwise deploys the primary tag,
+
+```yaml
+    - name: Setup Dockem
+      uses: kerren/setup-dockem@v2
+
+    - name: Run Dockem
+      id: dockem
+      run: dockem build --image-name=my-repo/backend --tag=stable --main-version
+
+    - name: Deploy
+      if: steps.dockem.outputs.cache-hit != 'true'
+      run: ./deploy.sh ${{ steps.dockem.outputs.primary-tag }}
+```
 
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
