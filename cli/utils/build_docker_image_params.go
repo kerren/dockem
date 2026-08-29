@@ -10,6 +10,7 @@ type BuildDockerImageParams struct {
 	Latest               bool
 	MainVersion          bool
 	Registry             string
+	StrictRegistry       bool
 	Tag                  []string
 	VersionFile          string
 	WatchDirectory       []string

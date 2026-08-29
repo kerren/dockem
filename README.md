@@ -63,6 +63,7 @@ Flags:
   -l, --latest                           Whether to push the latest tag with this image
   -m, --main-version                     Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.
   -r, --registry string                  The registry that should be used when pulling/pushing the image, Dockerhub is used by default
+  -s, --strict-registry                  Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.
   -t, --tag stringArray                  The tag or tags that should be attached to image
   -F, --version-file string              (required) The name of the JSON file that holds the version to be used in the build. This JSON file must have the 'version' key. (default "./package.json")
   -W, --watch-directory stringArray      Watch for changes in a directory or directories
@@ -155,6 +156,20 @@ example-org/backend:alpha-v1.0.0
 ```
 
 Assuming the version in the version file is `1.0.0`.
+
+
+### Strict Registry
+
+By default, if `dockem` is unable to reliably check the registry for the image hash (for
+example, an authentication failure or a rate limit rather than a genuine "this tag
+doesn't exist yet"), it logs a warning and carries on as if the hash was not found,
+triggering a build. This matches the behaviour `dockem` has always had.
+
+The `--strict-registry` flag changes this: if the registry check fails for any reason
+other than the hash genuinely not existing, the build aborts immediately instead of
+proceeding. This is useful in CI/CD pipelines where you'd rather fail fast on a
+credentials or registry problem than pay for a full build and push that may well fail
+again at the push step for the same reason.
 
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
