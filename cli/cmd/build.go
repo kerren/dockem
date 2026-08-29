@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"dockem/utils"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,9 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		// 5. Ensure that the output-format flag is one of the supported formats
 		outputFormat, _ := cmd.Flags().GetString("output-format")
 		utils.AssertOneOf(outputFormat, []string{"text", "json"}, "ERROR: The output-format '%s' is not valid. Please specify either 'text' or 'json'.")
+		// 6. Ensure that the builder flag is one of the supported builders
+		builder, _ := cmd.Flags().GetString("builder")
+		utils.AssertOneOf(builder, []string{"auto", "buildx", "docker"}, "ERROR: The builder '%s' is not valid. Please specify one of 'auto', 'buildx' or 'docker'.")
 
 		dockerPassword, _ := cmd.Flags().GetString("docker-password")
 		dockerUsername, _ := cmd.Flags().GetString("docker-username")
@@ -53,8 +57,25 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		watchFile, _ := cmd.Flags().GetStringArray("watch-file")
 		mainVersion, _ := cmd.Flags().GetBool("main-version")
 
+		// --platform is both repeatable (--platform a --platform b) and
+		// comma-splittable (--platform a,b). cobra's StringArray keeps each
+		// value verbatim, so split every value on commas here and flatten the
+		// result, trimming whitespace and dropping empties, to support both
+		// forms in one list.
+		platformFlag, _ := cmd.Flags().GetStringArray("platform")
+		var platform []string
+		for _, value := range platformFlag {
+			for _, part := range strings.Split(value, ",") {
+				part = strings.TrimSpace(part)
+				if part != "" {
+					platform = append(platform, part)
+				}
+			}
+		}
+
 		// Now we can create the build docker image params struct
 		buildDockerImageParams := utils.BuildDockerImageParams{
+			Builder:              builder,
 			Directory:            directory,
 			DockerPassword:       dockerPassword,
 			DockerUsername:       dockerUsername,
@@ -67,6 +88,7 @@ otherwise, build the new image and push it to the specified tag(s).`,
 			MainVersion:          mainVersion,
 			OutputFile:           outputFile,
 			OutputFormat:         outputFormat,
+			Platform:             platform,
 			Registry:             registry,
 			RespectDockerignore:  respectDockerignore,
 			StrictRegistry:       strictRegistry,
@@ -128,6 +150,8 @@ func init() {
 	buildCmd.Flags().Bool("no-respect-dockerignore", false, "Explicitly do NOT respect the .dockerignore file, opting back into the pre-v3 behaviour of hashing and sending everything in the build directory.")
 	buildCmd.Flags().String("ignore-file", "", "The path to an alternative ignore file to use instead of <directory>/.dockerignore. Only consulted when --respect-dockerignore is set.")
 	buildCmd.Flags().StringArray("exclude", []string{}, "Extra .dockerignore-style pattern(s) to exclude from both the input hash and the build context. Repeatable. Always applied, even without --respect-dockerignore.")
+	buildCmd.Flags().StringArray("platform", []string{}, "Target platform(s) to build for, eg. linux/amd64. Repeatable and comma-splittable (--platform linux/amd64,linux/arm64). Building more than one platform requires buildx; it errors, rather than silently falling back, when buildx is unavailable or --builder=docker is set.")
+	buildCmd.Flags().String("builder", "auto", "Which build backend to use: 'auto' (use buildx when available, otherwise the classic daemon builder), 'buildx', or 'docker' (force the classic builder).")
 
 	buildCmd.Example = `$ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/Dockerfile --image-name=my-repo/backend --tag=stable --main-version
 

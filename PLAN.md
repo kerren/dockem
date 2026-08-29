@@ -591,17 +591,17 @@ stranded.
 
 ### 4.2 Builder selection
 
-- [ ] Add `Platform []string` and `Builder string` to `BuildDockerImageParams`.
-- [ ] Add `--platform` (string array, repeatable and comma-splittable) and
+- [x] Add `Platform []string` and `Builder string` to `BuildDockerImageParams`.
+- [x] Add `--platform` (string array, repeatable and comma-splittable) and
       `--builder` (`auto`|`buildx`|`docker`, default `auto`) to `cli/cmd/build.go`.
-- [ ] Add `cli/utils/detect_buildx.go` with `DetectBuildx() (bool, string, error)`
+- [x] Add `cli/utils/detect_buildx.go` with `DetectBuildx() (bool, string, error)`
       running `docker buildx version` and returning availability plus the version.
-- [ ] Resolution logic for `auto`: use buildx when available, otherwise fall back to
+- [x] Resolution logic for `auto`: use buildx when available, otherwise fall back to
       the classic builder.
-- [ ] **Error, do not silently fall back**, when `--platform` names more than one
+- [x] **Error, do not silently fall back**, when `--platform` names more than one
       platform and buildx is unavailable — a silent single-arch build published under a
       multi-arch-looking tag is the worst possible outcome.
-- [ ] Record `builder` and `platforms` on `BuildLog`.
+- [x] Record `builder` and `platforms` on `BuildLog`.
 
 ### 4.3 Platforms must feed the hash
 
@@ -651,16 +651,16 @@ on the command line. When `--docker-username` / `--docker-password` are supplied
 explicitly, the subprocess needs those credentials without mutating the user's real
 config.
 
-- [ ] Add `cli/utils/temp_docker_config.go` with
+- [x] Add `cli/utils/temp_docker_config.go` with
       `TempDockerConfig(registry, username, password string) (dir string, cleanup func(), error)`.
-- [ ] Write a minimal `config.json` containing a base64 `auths` entry for the registry
+- [x] Write a minimal `config.json` containing a base64 `auths` entry for the registry
       into a `t.TempDir()`-style temporary directory with `0600` permissions.
-- [ ] Set `DOCKER_CONFIG=<dir>` on the subprocess environment only — never export it
+- [x] Set `DOCKER_CONFIG=<dir>` on the subprocess environment only — never export it
       into the parent process.
-- [ ] Always remove the temp directory via `defer`, including on build failure.
-- [ ] When no explicit credentials are given, inherit the environment unchanged so an
+- [x] Always remove the temp directory via `defer`, including on build failure.
+- [x] When no explicit credentials are given, inherit the environment unchanged so an
       existing `docker login` continues to work.
-- [ ] Never log the password, and confirm it does not reach `BuildLog` output or the
+- [x] Never log the password, and confirm it does not reach `BuildLog` output or the
       JSON result from Phase 2.
 
 ### 4.6 Verify the copy path handles manifest lists

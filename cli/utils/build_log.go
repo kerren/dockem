@@ -5,6 +5,7 @@ package utils
  * I use this in testing to ensure that the expected outcomes are met.
  */
 type BuildLog struct {
+	builder             string
 	customDockerfile    bool
 	customHost          bool
 	dockerPassword      string
@@ -19,6 +20,7 @@ type BuildLog struct {
 	imageHash           string
 	localTag            string
 	outputTags          []string
+	platforms           []string
 	respectDockerignore bool
 	version             string
 }
