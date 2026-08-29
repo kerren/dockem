@@ -355,18 +355,18 @@ The rule, unchanged: each `--tag X` becomes `X-vVERSION`; `--latest` adds `lates
 `--main-version` adds `vVERSION`; if none of tags/latest/main-version were given, it
 falls back to `vVERSION`.
 
-- [ ] Add `cli/utils/resolve_target_tags.go` with
+- [x] Add `cli/utils/resolve_target_tags.go` with
       `ResolveTargetTags(params BuildDockerImageParams, version string) []string`
       returning fully-qualified image names via `GenerateDockerImageName`.
-- [ ] Add `cli/utils/resolve_target_tags_test.go` — a pure unit test (no registry
+- [x] Add `cli/utils/resolve_target_tags_test.go` — a pure unit test (no registry
       needed) covering all four branches and their combinations:
       tags only; `--latest` only; `--main-version` only; none; tags + latest + main.
-- [ ] Rewrite `CopyExistingImageTag` to iterate `ResolveTargetTags`.
-- [ ] Rewrite `TagAndPushNewImages` to iterate `ResolveTargetTags`.
-- [ ] Preserve the per-branch log lines (the "WARN: No tags were specified…" message in
+- [x] Rewrite `CopyExistingImageTag` to iterate `ResolveTargetTags`.
+- [x] Rewrite `TagAndPushNewImages` to iterate `ResolveTargetTags`.
+- [x] Preserve the per-branch log lines (the "WARN: No tags were specified…" message in
       particular) by returning a small struct or by having the resolver record the reason
       for each tag.
-- [ ] Verify `buildLog.outputTags` ordering is unchanged so the existing e2e assertions
+- [x] Verify `buildLog.outputTags` ordering is unchanged so the existing e2e assertions
       in `build_docker_image_test.go` still pass.
 
 ---
