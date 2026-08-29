@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"dockem/utils"
-	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -59,7 +58,7 @@ otherwise, build the new image and push it to the specified tag(s).`,
 		// Finally, we push this off to the build docker image function
 		_, err := utils.BuildDockerImage(buildDockerImageParams)
 		if err != nil {
-			fmt.Print("\n\n")
+			utils.LogInfo("\n\n")
 			panic(err)
 		}
 	},
