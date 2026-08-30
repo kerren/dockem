@@ -276,3 +276,63 @@ func countArg(args []string, needle string) int {
 	}
 	return n
 }
+
+func TestDockerfileOutsideContext(t *testing.T) {
+	// Mirrors the rule TarBuildContext applies on the classic path, so the two
+	// builders agree on what an out-of-context Dockerfile is.
+	cases := []struct {
+		name       string
+		directory  string
+		dockerfile string
+		expected   bool
+	}{
+		{"dockerfile in the context root", "build", "build/Dockerfile", false},
+		{"dockerfile in a child of the context", "build", "build/docker/Dockerfile", false},
+		{"dockerfile one level above the context", "build", "Dockerfile", true},
+		{"dockerfile in a sibling directory", "build", "other/Dockerfile", true},
+		{"the e2e layout", "../../testing/e2e/base-changing-test-image/build", "../../testing/e2e/dockerfile-context/Dockerfile.alpine-3.17", true},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			actual := dockerfileOutsideContext(testCase.directory, testCase.dockerfile)
+			if actual != testCase.expected {
+				t.Errorf("Expected %t for directory %q and dockerfile %q, got %t", testCase.expected, testCase.directory, testCase.dockerfile, actual)
+			}
+		})
+	}
+}
+
+func TestAssembleBuildxArgsRecordsCustomDockerfile(t *testing.T) {
+	// The regression this pins: the buildx path never calls TarBuildContext, so
+	// buildLog.customDockerfile - which the classic path sets in there - was
+	// never set, and TestDockerfileOutsideOfBuildContext failed on any machine
+	// that has buildx even though the build itself was correct.
+	params := BuildDockerImageParams{
+		Directory:      "../../testing/e2e/base-changing-test-image/build",
+		DockerfilePath: "../../testing/e2e/dockerfile-context/Dockerfile.alpine-3.17",
+		ImageName:      "example",
+	}
+
+	buildLog := &BuildLog{}
+	assembleBuildxArgs(params, "example:hash", []ResolvedTag{}, buildLog)
+
+	if !buildLog.customDockerfile {
+		t.Error("The custom Dockerfile flag should be set for a Dockerfile outside the build context")
+	}
+}
+
+func TestAssembleBuildxArgsDoesNotRecordCustomDockerfileInsideContext(t *testing.T) {
+	params := BuildDockerImageParams{
+		Directory:      "../../testing/e2e/base-test-image",
+		DockerfilePath: "../../testing/e2e/base-test-image/Dockerfile",
+		ImageName:      "example",
+	}
+
+	buildLog := &BuildLog{}
+	assembleBuildxArgs(params, "example:hash", []ResolvedTag{}, buildLog)
+
+	if buildLog.customDockerfile {
+		t.Error("The custom Dockerfile flag should not be set for a Dockerfile inside the build context")
+	}
+}
