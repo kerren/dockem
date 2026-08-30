@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 )
 
+// AssertDirectoryExists Asserts that a directory exists at the given path. If not, either exits or returns an error message.
 func AssertDirectoryExists(path string, errorMessage string) {
 
 	if errorMessage == "" {
@@ -14,7 +15,7 @@ func AssertDirectoryExists(path string, errorMessage string) {
 	absDirectory, _ := filepath.Abs(path)
 	if exists, _ := DirectoryExists(absDirectory); !exists {
 		outputMessage := fmt.Sprintf(errorMessage, absDirectory)
-		fmt.Println(outputMessage)
+		LogInfo("%s\n", outputMessage)
 		os.Exit(1)
 	}
 }

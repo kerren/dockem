@@ -11,9 +11,13 @@ import (
 	"github.com/moby/term"
 )
 
-func BuildImage(params BuildDockerImageParams, imageHash string, dockerClient *client.Client, buildLog *BuildLog) (string, error) {
+// BuildImage builds a Docker image using the provided build context tarball. It
+// will name the image local:imageHash. The excludePatterns are resolved once in
+// BuildDockerImage and threaded through to TarBuildContext so that the files
+// streamed to the daemon are exactly the files that fed the hash.
+func BuildImage(params BuildDockerImageParams, imageHash string, excludePatterns []string, dockerClient *client.Client, buildLog *BuildLog) (string, error) {
 
-	reader, relativeDockerfilePath, readerErr := TarBuildContext(params, dockerClient, buildLog)
+	reader, relativeDockerfilePath, readerErr := TarBuildContext(params, excludePatterns, dockerClient, buildLog)
 	if readerErr != nil {
 		return "", readerErr
 	}
@@ -26,7 +30,7 @@ func BuildImage(params BuildDockerImageParams, imageHash string, dockerClient *c
 	})
 
 	if imageBuildError != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to build the image: %s\n", imageBuildError)
+		LogError("An error ocurred when trying to build the image: %s\n", imageBuildError)
 		return "", imageBuildError
 	}
 	termFd, isTerm := term.GetFdInfo(os.Stderr)

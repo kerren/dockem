@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 )
 
+// AssertFileExists Asserts that a file exists at the given path. If not, prints an error message and exits the program.
 func AssertFileExists(path string, errorMessage string) {
 
 	if errorMessage == "" {
@@ -14,7 +15,7 @@ func AssertFileExists(path string, errorMessage string) {
 	absFilePath, _ := filepath.Abs(path)
 	if exists, _ := FileExists(absFilePath); !exists {
 		outputMessage := fmt.Sprintf(errorMessage, absFilePath)
-		fmt.Println(outputMessage)
+		LogInfo("%s\n", outputMessage)
 		os.Exit(1)
 	}
 }

@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,21 +11,24 @@ import (
 	"github.com/docker/docker/pkg/archive"
 )
 
-func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client, buildLog *BuildLog) (io.Reader, string, error) {
+// TarBuildContext Creates a gzipped tarball of the build context, including the Dockerfile and associated files.
+// The excludePatterns are the same list that fed the input hash, so the files
+// streamed to the builder are exactly the files that were hashed.
+func TarBuildContext(params BuildDockerImageParams, excludePatterns []string, dockerClient *client.Client, buildLog *BuildLog) (io.Reader, string, error) {
 
 	absDirectoryPath, absDirectoryPathError := filepath.Abs(params.Directory)
 	if absDirectoryPathError != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to get the absolute path of the directory, please check your entry for %s\n", params.Directory)
+		LogError("An error ocurred when trying to get the absolute path of the directory, please check your entry for %s\n", params.Directory)
 		return nil, "", absDirectoryPathError
 	}
 	absDockerfilePath, absDockerfilePathError := filepath.Abs(params.DockerfilePath)
 	if absDockerfilePathError != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to get the absolute path of the Dockerfile, please check your entry for %s\n", params.DockerfilePath)
+		LogError("An error ocurred when trying to get the absolute path of the Dockerfile, please check your entry for %s\n", params.DockerfilePath)
 		return nil, "", absDockerfilePathError
 	}
 	relativeDockerfilePath, relativeDockerfilePathError := filepath.Rel(absDirectoryPath, absDockerfilePath)
 	if relativeDockerfilePathError != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to get the relative path of the Dockerfile from the build directory, please check your entry for:\nDirectory %s\nDockerfile %s", absDirectoryPath, absDockerfilePath)
+		LogError("An error ocurred when trying to get the relative path of the Dockerfile from the build directory, please check your entry for:\nDirectory %s\nDockerfile %s", absDirectoryPath, absDockerfilePath)
 		return nil, "", relativeDockerfilePathError
 	}
 	var tempDockerfileRef *os.File
@@ -37,7 +39,7 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client,
 		buildLog.customDockerfile = true
 		tempDockerfile, tempDockerfileError := os.CreateTemp(absDirectoryPath, "Dockerfile.")
 		if tempDockerfileError != nil {
-			fmt.Printf("ERROR: An error ocurred when trying to create a temporary Dockerfile for the build, please check that the directory is writable %s\n", absDirectoryPath)
+			LogError("An error ocurred when trying to create a temporary Dockerfile for the build, please check that the directory is writable %s\n", absDirectoryPath)
 			return nil, "", tempDockerfileError
 		}
 		tempDockerfileRef = tempDockerfile
@@ -45,24 +47,39 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client,
 		defer os.Remove(tempDockerfileRef.Name())
 		dockerfileContent, dockerfileContentError := os.ReadFile(absDockerfilePath)
 		if dockerfileContentError != nil {
-			fmt.Printf("ERROR: An error ocurred when trying to read the Dockerfile, please check your entry for %s\n", absDockerfilePath)
+			LogError("An error ocurred when trying to read the Dockerfile, please check your entry for %s\n", absDockerfilePath)
 			return nil, "", dockerfileContentError
 		}
 		_, writeError := tempDockerfile.Write(dockerfileContent)
 		if writeError != nil {
-			fmt.Printf("ERROR: An error ocurred when trying to write the Dockerfile to a temporary one for the build, please check that the directory is writable %s\n", absDirectoryPath)
+			LogError("An error ocurred when trying to write the Dockerfile to a temporary one for the build, please check that the directory is writable %s\n", absDirectoryPath)
 			return nil, "", writeError
 		}
 		relativeDockerfilePath, relativeDockerfilePathError = filepath.Rel(absDirectoryPath, tempDockerfile.Name())
 		if relativeDockerfilePathError != nil {
-			fmt.Printf("ERROR: An error ocurred when trying to get the relative path of the Dockerfile from the build directory, please check your entry for:\nDirectory %s\nDockerfile %s", absDirectoryPath, tempDockerfile.Name())
+			LogError("An error ocurred when trying to get the relative path of the Dockerfile from the build directory, please check your entry for:\nDirectory %s\nDockerfile %s", absDirectoryPath, tempDockerfile.Name())
 			return nil, "", relativeDockerfilePathError
 		}
 	}
 
-	reader, tarErr := archive.TarWithOptions(absDirectoryPath, &archive.TarOptions{})
+	// The tar is excluded with the SAME pattern list that HashDirectory used,
+	// so the files streamed to the daemon are exactly the files that fed the
+	// hash. Two trailing negations guarantee the Dockerfile we build from and
+	// the .dockerignore survive even a broad rule such as `Dockerfile*` or `*`.
+	// In the out-of-context case relativeDockerfilePath is the temporary
+	// `Dockerfile.` copy created above, so this is precisely what stops such a
+	// rule from deleting it and breaking the build. When there are no patterns
+	// we pass the options untouched, so non-adopters get today's tar exactly.
+	tarOptions := &archive.TarOptions{}
+	if len(excludePatterns) > 0 {
+		patterns := append([]string{}, excludePatterns...)
+		patterns = append(patterns, "!"+relativeDockerfilePath, "!.dockerignore")
+		tarOptions.ExcludePatterns = patterns
+	}
+
+	reader, tarErr := archive.TarWithOptions(absDirectoryPath, tarOptions)
 	if tarErr != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to archive the directory to send to the builder: %s\n", tarErr)
+		LogError("An error ocurred when trying to archive the directory to send to the builder: %s\n", tarErr)
 		return nil, "", tarErr
 	}
 
@@ -79,7 +96,7 @@ func TarBuildContext(params BuildDockerImageParams, dockerClient *client.Client,
 		// the temporary file before going to the build process.
 		data, readErr := io.ReadAll(reader)
 		if readErr != nil {
-			fmt.Printf("ERROR: An error ocurred when trying to read the tar stream: %s\n", readErr)
+			LogError("An error ocurred when trying to read the tar stream: %s\n", readErr)
 			return nil, "", readErr
 		}
 		outputReader = io.NopCloser(bytes.NewReader(data))

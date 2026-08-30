@@ -53,20 +53,32 @@ Usage:
 
 
 Flags:
-  -d, --directory string                 (required) The directory that should be used as the context for the Docker build (default "./")
-  -p, --docker-password string           The password that should be used to authenticate the docker client. Ignore if you have already logged in.
-  -u, --docker-username string           The username that should be used to authenticate the docker client. Ignore if you have already logged in.
-  -f, --dockerfile-path string           (required) The path to the Dockerfile that should be used to build the image (default "./Dockerfile")
-  -h, --help                             help for build
-  -I, --ignore-build-directory           Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.
-  -i, --image-name string                (required) The name of the image you are building
-  -l, --latest                           Whether to push the latest tag with this image
-  -m, --main-version                     Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.
-  -r, --registry string                  The registry that should be used when pulling/pushing the image, Dockerhub is used by default
-  -t, --tag stringArray                  The tag or tags that should be attached to image
-  -F, --version-file string              (required) The name of the JSON file that holds the version to be used in the build. This JSON file must have the 'version' key. (default "./package.json")
-  -W, --watch-directory stringArray      Watch for changes in a directory or directories
-  -w, --watch-file stringArray           Watch for changes on a specific file or files
+      --builder string                Which build backend to use: 'auto' (use buildx when available, otherwise the classic daemon builder), 'buildx', or 'docker' (force the classic builder). (default "auto")
+      --cache-from stringArray        Cache import source(s) to pass through to 'docker buildx build --cache-from', verbatim, one flag per value, eg. --cache-from=type=gha. Repeatable. Buildx-only: ignored (with a warning) when the classic --builder=docker path is selected, and deliberately excluded from the image hash since it only affects build speed.
+      --cache-to stringArray          Cache export target(s) to pass through to 'docker buildx build --cache-to', verbatim, one flag per value, eg. --cache-to=type=gha,mode=max. Repeatable. Buildx-only: ignored (with a warning) when the classic --builder=docker path is selected, and deliberately excluded from the image hash since it only affects build speed.
+  -d, --directory string              (required) The directory that should be used as the context for the Docker build (default "./")
+  -p, --docker-password string        The password that should be used to authenticate the docker client. Ignore if you have already logged in.
+  -u, --docker-username string        The username that should be used to authenticate the docker client. Ignore if you have already logged in.
+  -f, --dockerfile-path string        (required) The path to the Dockerfile that should be used to build the image (default "./Dockerfile")
+      --exclude stringArray           Extra .dockerignore-style pattern(s) to exclude from both the input hash and the build context. Repeatable. Always applied, even without --respect-dockerignore.
+  -h, --help                          help for build
+  -I, --ignore-build-directory        Whether to ignore the build directory in the hashing process, this is useful when you are watching a specific file or directory.
+      --ignore-file string            The path to an alternative ignore file to use instead of <directory>/.dockerignore. Only consulted when --respect-dockerignore is set.
+  -i, --image-name string             (required) The name of the image you are building
+  -l, --latest                        Whether to push the latest tag with this image
+  -m, --main-version                  Whether to push this as the main version of the repository. This is done automatically if you do not specify tags or the latest flag.
+      --no-respect-dockerignore       Explicitly do NOT respect the .dockerignore file, opting back into the pre-v3 behaviour of hashing and sending everything in the build directory.
+      --output-file string            The path of a file to write the --output-format=json build result to, instead of stdout. Ignored when --output-format is not 'json'.
+      --output-format string          The format to print the build result in, either 'text' (the default, today's human-readable logging) or 'json' (an indented JSON BuildResult on stdout, or --output-file if set). $GITHUB_OUTPUT is always written to when set, regardless of this flag. (default "text")
+      --platform stringArray          Target platform(s) to build for, eg. linux/amd64. Repeatable and comma-splittable (--platform linux/amd64,linux/arm64). Building more than one platform requires buildx; it errors, rather than silently falling back, when buildx is unavailable or --builder=docker is set.
+  -r, --registry string               The registry that should be used when pulling/pushing the image, Dockerhub is used by default
+      --respect-dockerignore          Respect the .dockerignore file in the build directory (and any --ignore-file) when hashing the inputs and building the context, excluding matching files from both. Defaults to true as of v3; this reset every published hash tag when it flipped from v2's default of false. (default true)
+      --secret stringArray            Build secret(s) to pass through to 'docker buildx build --secret', verbatim, one flag per value, eg. --secret=id=npmrc,src=$HOME/.npmrc. Repeatable. Buildx-only, and unlike the cache flags this is a hard error rather than a warning when the classic --builder=docker path is selected, since building without the secret would produce a different image. Deliberately excluded from the image hash.
+  -s, --strict-registry               Whether to abort the build if the registry cannot be reliably checked for the image hash (eg. an authentication failure or a rate limit), instead of logging a warning and continuing with the build.
+  -t, --tag stringArray               The tag or tags that should be attached to image
+  -F, --version-file string           (required) The name of the JSON file that holds the version to be used in the build. This JSON file must have the 'version' key. (default "./package.json")
+  -W, --watch-directory stringArray   Watch for changes in a directory or directories
+  -w, --watch-file stringArray        Watch for changes on a specific file or files
 
 ```
 
@@ -78,6 +90,8 @@ dockem build --directory=./apps/backend --dockerfile-path=./devops/prod/backend/
 dockem build --directory=./apps/backend --watch-directory=./libs/shared --dockerfile-path=./apps/backend/Dockerfile --image-name=my-repo/backend --tag=dev --latest
 
 dockem build --image-name=my-repo/backend --registry=eu.reg.io --docker-username=uname --docker-password=1234 --tag=alpha --tag=test
+
+dockem build --image-name=my-repo/backend --tag=stable --output-format=json | jq -r '.primaryTag'
 ```
 
 ## Usage in Actions
@@ -115,6 +129,40 @@ In most cases (I think), you'd want to trigger a build when the build directory 
 In this case, you can use the `--ignore-build-directory` flag to ignore the build directory in the hashing process.
 
 An example of where this may be useful is if you build base images that other Docker images use in the `FROM` statement. In this case, you may only want to trigger a build when the `Dockerfile` changes and not the code that is copied into the base image.
+
+
+### Respecting `.dockerignore`
+As of `v3`, `--respect-dockerignore` defaults to **`true`**: `dockem` reads the `.dockerignore` at the root of the build directory and applies its patterns to **both** the input hash and the build context. Because the same pattern list drives both, the files that decide whether a build is skipped are exactly the files that get built. Two files are always kept regardless of the patterns: the `Dockerfile` (Docker never lets you ignore it) and `.dockerignore` itself (editing your ignore rules must invalidate the cache).
+
+Before `v3`, every file under the build directory fed the hash and was streamed to the daemon &mdash; including anything CI generates before the build (`node_modules`, `dist/`, coverage output, `.git/`, and so on), which could quietly change the hash on every run. If you need that behaviour back, pass `--no-respect-dockerignore`.
+
+- `--respect-dockerignore` / `--no-respect-dockerignore` &mdash; turn `.dockerignore` handling on or off. **Default `true` as of `v3`** (it was opt-in, default `false`, in `v2`). Pass `--no-respect-dockerignore` to opt back into the pre-`v3` behaviour of hashing and sending everything.
+- `--ignore-file` &mdash; use an alternative ignore file instead of `<directory>/.dockerignore`. Only consulted when `--respect-dockerignore` is set.
+- `--exclude` &mdash; add extra `.dockerignore`-style patterns on the command line, repeatable. These are always applied, even without `--respect-dockerignore`.
+
+See [Cache identity](#cache-identity) below for what flipping this default means for hash tags you published before `v3`.
+
+
+### Cache identity
+The registry tag that decides whether a build is skipped or performed is a hash of everything that feeds it &mdash; the **image hash**. It is the concatenation of, in this fixed order:
+
+1. A hash-format prefix, `dockem-hash-v2` today, identifying the *shape* of everything below it (see below).
+2. Every `--watch-file`, in the order given.
+3. Every `--watch-directory`, sorted, each one minus anything matched by `.dockerignore` / `--ignore-file` / `--exclude` when `--respect-dockerignore` is set.
+4. The build directory (unless `--ignore-build-directory`), likewise minus any `.dockerignore` / `--exclude` matches.
+5. The `Dockerfile`.
+
+That concatenation is then hashed once to produce the image hash used as the registry tag. Change any of the inputs above &mdash; edit a watched file, add a non-ignored file to the build directory, change the Dockerfile, or change what `.dockerignore` excludes &mdash; and the hash changes, so the next build is a real build-and-push rather than a server-side tag copy. Leave all of them the same and the hash repeats, so the build is skipped and the tag is just copied.
+
+The prefix in step 1 exists so a change to *how* the hash is put together (as opposed to what happens to go into it on a given run) can be signalled explicitly. Every release before `v3` used an implicit, unmarked hash format &mdash; `overallHash` simply started as `""`. `v3` is the first release to mark that format, as `dockem-hash-v2`, at the same time as flipping `--respect-dockerignore` to default `true`. Bumping this prefix in some future release resets the cache for every image on purpose, as a deliberate, visible line in that release's diff, rather than silently as a side effect of some unrelated change.
+
+**Upgrading to `v3` invalidates every hash tag your pipelines have ever published**, because both of the changes above &mdash; respecting `.dockerignore` by default and introducing the `dockem-hash-v2` prefix &mdash; change what the hash is computed from. The first `v3` build of every image will be a full build-and-push, even if nothing about the image itself has changed since the last `v2` build. After that first build, caching behaves exactly as before: unchanged inputs mean a cache hit and a tag copy, changed inputs mean a rebuild.
+
+`--cache-from` and `--cache-to` (see [Build Cache](#build-cache---cache-from----cache-to) below) are deliberately **not** part of this concatenation. They select where `buildx` reads and writes its layer cache, which changes how fast a build runs but never the image it produces, so changing them never changes the hash and never invalidates a previously published hash tag.
+
+`--secret` (see [Build Secrets](#build-secrets---secret) below) is likewise excluded, for a related but not identical reason. A build secret is a credential the build *uses* &mdash; an npm token, an SSH key &mdash; not an input that defines what the build *produces*: two builds with the same inputs and a rotated token want the same image. Folding it into the hash would do the opposite of what you want, since a CI token that changes on every run would change the hash on every run and every image would rebuild every time.
+
+The corollary is a sharp edge worth stating plainly: if your `Dockerfile` writes a secret's *contents* into the image, changing that secret will not change the hash, and `dockem` will keep copying the image built with the old value forward. Don't bake secrets into images &mdash; which is exactly what `--secret` exists to let you avoid.
 
 
 ### Main Version
@@ -156,6 +204,238 @@ example-org/backend:alpha-v1.0.0
 
 Assuming the version in the version file is `1.0.0`.
 
+
+### Strict Registry
+
+By default, if `dockem` is unable to reliably check the registry for the image hash (for
+example, an authentication failure or a rate limit rather than a genuine "this tag
+doesn't exist yet"), it logs a warning and carries on as if the hash was not found,
+triggering a build. This matches the behaviour `dockem` has always had.
+
+The `--strict-registry` flag changes this: if the registry check fails for any reason
+other than the hash genuinely not existing, the build aborts immediately instead of
+proceeding. This is useful in CI/CD pipelines where you'd rather fail fast on a
+credentials or registry problem than pay for a full build and push that may well fail
+again at the push step for the same reason.
+
+
+### Builder and Platforms
+
+`dockem` can build through two backends. The classic path uses the Docker daemon's
+built-in builder, exactly as it always has. `docker buildx`, when it's available, is
+what makes multi-architecture images possible.
+
+`--builder` chooses between them:
+
+- `auto` (the default) &mdash; use `buildx` when `docker buildx version` succeeds,
+  otherwise fall back to the classic daemon builder.
+- `buildx` &mdash; require `buildx`; error if it isn't available.
+- `docker` &mdash; force the classic builder.
+
+`--platform` sets the target platform(s), for example `--platform linux/amd64`. It is
+both repeatable and comma-splittable, so `--platform linux/amd64 --platform linux/arm64`
+and `--platform linux/amd64,linux/arm64` mean the same thing.
+
+Building for **more than one platform requires `buildx`**. If you ask for multiple
+platforms while `buildx` is unavailable, or while `--builder=docker` forces the classic
+builder, `dockem` **errors out** rather than silently building a single-architecture
+image and publishing it under a tag that looks multi-arch &mdash; a single-arch image
+hiding behind a multi-arch tag is worse than a failed build.
+
+When the `buildx` path is used, `dockem` builds every requested platform and pushes the
+hash tag and every one of your tags in a single `docker buildx build --push`. The
+platform list is folded into the hash, so switching from `linux/amd64` to
+`linux/amd64,linux/arm64` produces a new hash and triggers a rebuild &mdash; you can't
+accidentally keep copying a single-arch image forward under a multi-arch request. A
+build with **no** `--platform` hashes exactly as it did before multi-platform support,
+so single-platform users are unaffected.
+
+If you pass `--docker-username`/`--docker-password`, `dockem` writes those credentials
+to a throwaway `config.json` and hands it to the `buildx` subprocess through
+`DOCKER_CONFIG` for that one command only &mdash; it never touches your real
+`~/.docker/config.json`. With no credential flags, an existing `docker login` is used as-is.
+
+#### Multi-architecture example
+
+Build `linux/amd64` and `linux/arm64` in one go and push them as a single multi-arch
+tag (this needs `docker buildx`; on GitHub-hosted runners it is already present):
+
+```shell
+dockem build \
+  --image-name=my-repo/backend \
+  --dockerfile-path=./apps/backend/Dockerfile \
+  --directory=./apps/backend \
+  --platform=linux/amd64,linux/arm64 \
+  --tag=stable \
+  --latest
+```
+
+The pushed `my-repo/backend:stable-vX.Y.Z` and `my-repo/backend:latest` are manifest
+lists carrying both architectures. On the next run with the same inputs the hash already
+exists, so `dockem` copies the whole multi-arch index to your tags registry-side &mdash;
+no rebuild, no pull, no push.
+
+
+### Build Cache (`--cache-from` / `--cache-to`)
+
+`--cache-from` and `--cache-to` are passed straight through to `docker buildx build`,
+one `--cache-from`/`--cache-to` flag per value, exactly as you wrote them &mdash;
+`dockem` does not interpret or validate their contents. They select a BuildKit
+[cache backend](https://docs.docker.com/build/cache/backends/) (eg. `type=gha` for
+GitHub Actions' cache, `type=registry` for a registry-backed cache, or `type=local`
+for a local directory), which lets `buildx` reuse layers from a previous build instead
+of rebuilding them from scratch. Both flags are repeatable, so you can pass more than
+one cache source/target.
+
+Here's the multi-architecture example above with a GitHub Actions cache added:
+
+```shell
+dockem build \
+  --image-name=my-repo/backend \
+  --dockerfile-path=./apps/backend/Dockerfile \
+  --directory=./apps/backend \
+  --platform=linux/amd64,linux/arm64 \
+  --tag=stable \
+  --latest \
+  --cache-from=type=gha \
+  --cache-to=type=gha,mode=max
+```
+
+These flags are **buildx-only**, and change build *speed*, never the image that gets
+produced, so they are deliberately excluded from the image hash (see
+[Cache identity](#cache-identity) above) &mdash; passing a new `--cache-to` does not
+invalidate any previously published hash tag, and two builds with identical inputs but
+different cache flags still share a hash. If `--cache-from` or `--cache-to` are supplied
+while the classic (`--builder=docker`) path is selected, `dockem` logs a warning and
+ignores them, since the classic builder has no cache import/export mechanism of its own.
+
+
+### Build Secrets (`--secret`)
+
+`--secret` supplies a BuildKit build secret to `docker buildx build`. Use it when a
+build needs a credential &mdash; a private npm token, a PyPI index password, an SSH
+key &mdash; that must **not** end up in a layer of the finished image. Values are
+passed straight through, one `--secret` flag per value, exactly as you wrote them;
+`dockem` does not interpret or validate their contents, and the flag is repeatable.
+
+Both of buildx's forms work:
+
+- `--secret=id=NAME,src=PATH` &mdash; read the value from a file.
+- `--secret=id=NAME,env=VAR` &mdash; read the value from an environment variable.
+
+The flag is only half of the story: the `Dockerfile` has to mount the secret by the
+same `id`, which makes it readable at `/run/secrets/<id>` for that one `RUN` and
+leaves nothing behind in the image.
+
+```dockerfile
+FROM node:20-alpine
+COPY package.json package-lock.json ./
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc npm ci
+```
+
+```shell
+dockem build \
+  --image-name=my-repo/backend \
+  --dockerfile-path=./apps/backend/Dockerfile \
+  --directory=./apps/backend \
+  --tag=stable \
+  --secret=id=npmrc,src=$HOME/.npmrc
+```
+
+A few things worth knowing:
+
+- **This is buildx-only, and unlike `--cache-from`/`--cache-to` it is a hard error
+  rather than a warning.** If `--secret` is supplied while the classic
+  (`--builder=docker`) path would be selected &mdash; whether because you asked for it
+  explicitly, or because `--builder=auto` found no `buildx` to fall back from &mdash;
+  `dockem` refuses to build. The classic daemon builder has no BuildKit session and
+  cannot mount a secret, so it would hand the `Dockerfile` an *empty*
+  `/run/secrets/<id>` and produce a **different image**, which `dockem` would then
+  publish under its hash tag and copy forward on every later run. A failed build is
+  recoverable; a poisoned hash tag is not.
+- **Relative `src=` paths resolve against `dockem`'s own working directory**, not
+  `--directory`. This is exactly how raw `docker buildx build` behaves, and `dockem`
+  deliberately does not rewrite them.
+- **Keep the secret file out of the build context**, or `.dockerignore` it. A file
+  sitting inside `--directory` feeds the input hash and gets shipped to the daemon,
+  which is the situation `--secret` exists to avoid.
+- **Excluded from the image hash** (see [Cache identity](#cache-identity) above), so
+  rotating a token does not invalidate a single published tag, and adding `--secret`
+  to an existing build does not force a rebuild.
+- **`dockem` never handles the value.** `--secret` carries an id and a *reference* to
+  the value, so nothing sensitive reaches the command line, the logs, or the JSON
+  result. One caveat that is yours rather than `dockem`'s: `buildx` output is streamed
+  to stderr, so a `RUN` that `cat`s a mounted secret will print it into your CI log.
+
+
+### Output Format
+
+By default (`--output-format=text`), `dockem` just logs its human-readable progress
+to stderr as it runs, exactly as it always has.
+
+Passing `--output-format=json` additionally prints an indented JSON object describing
+the result of the build to stdout once the build finishes - or to the file given by
+`--output-file`, instead of stdout, if you'd rather not deal with capturing it from a
+subprocess. Nothing else is written to stdout in this mode, so it's always safe to
+pipe straight into something like `jq`.
+
+```shell
+$ dockem build --image-name=my-repo/backend --tag=stable --output-format=json | jq .
+{
+  "hash": "1a2b3c4d5e6f...",
+  "cacheHit": true,
+  "image": "my-repo/backend:1a2b3c4d5e6f...",
+  "version": "v1.0.0",
+  "tags": [
+    "my-repo/backend:stable-v1.0.0"
+  ],
+  "primaryTag": "my-repo/backend:stable-v1.0.0",
+  "platforms": [],
+  "registry": "",
+  "durationMs": 842
+}
+```
+
+If the build fails, `dockem` still writes whatever it managed to compute before the
+failure (eg. the hash, if it got that far) as JSON before it exits non-zero, so a
+pipeline can tell how far the build got even when something went wrong.
+
+### GitHub Actions Output
+
+Whenever the `$GITHUB_OUTPUT` environment variable is set - which GitHub Actions sets
+automatically for every step - `dockem build` appends its result to that file as step
+outputs on a successful build, regardless of `--output-format`. This is what lets a
+later step in the same job reference eg. `steps.<id>.outputs.primary-tag` without
+having to scrape it out of the logs.
+
+The following keys are written:
+
+| Key | Description |
+|---|---|
+| `hash` | The computed image hash used as the cache key. |
+| `cache-hit` | `"true"` if the hash already existed on the registry (the build was skipped and the tag copied instead), `"false"` if a build actually happened. |
+| `image` | The fully-qualified `image:hash` name that was checked/pushed. |
+| `version` | The version extracted from the version file, eg. `v1.0.0`. |
+| `primary-tag` | The first tag that was pushed or copied - typically the one you want to deploy. |
+| `tags` | Every tag that was pushed or copied, comma-separated. |
+| `platforms` | The platform(s) the image was built for, comma-separated. Empty for a single-platform build (no `--platform`); set to the requested list, eg. `linux/amd64,linux/arm64`, for a multi-platform build. |
+
+Here's a worked example that skips the deploy step entirely on a cache hit, and
+otherwise deploys the primary tag,
+
+```yaml
+    - name: Setup Dockem
+      uses: kerren/setup-dockem@v2
+
+    - name: Run Dockem
+      id: dockem
+      run: dockem build --image-name=my-repo/backend --tag=stable --main-version
+
+    - name: Deploy
+      if: steps.dockem.outputs.cache-hit != 'true'
+      run: ./deploy.sh ${{ steps.dockem.outputs.primary-tag }}
+```
+
 # Roadmap
 There are a few tweaks and features I'd like to implement to improve the overall project.
 
@@ -165,8 +445,9 @@ There are a few tweaks and features I'd like to implement to improve the overall
  - [x] Add more examples to the documentation on how to use the `cli` effectively
  - [ ] Add documentation to the `utils` functions
  - [ ] Add a Homebrew tap
- - [ ] Add the ability to enable `buildx` caching for Github Actions. This could make the builds faster in future.
- - [ ] Add the ability to specify the platform(s) you'd like to build for using a `buildx` builder. This would be cool to be able to build ARM images using a standard runner. For now, I recommend deploying a custom ARM runner and building on that (it'll also be a lot faster)
+ - [x] Add the ability to enable `buildx` caching for Github Actions. This could make the builds faster in future.
+ - [x] Add the ability to specify the platform(s) you'd like to build for using a `buildx` builder. This would be cool to be able to build ARM images using a standard runner. For now, I recommend deploying a custom ARM runner and building on that (it'll also be a lot faster)
+ - [x] Add the ability to pass BuildKit build secrets (`--secret`) through to `buildx`, so private registries and package tokens can be used at build time without baking them into the image
 
 # The Long Argument
 So now you may ask, why? What's the point?

@@ -4,6 +4,7 @@ go 1.22.2
 
 require (
 	github.com/docker/docker v26.1.0+incompatible
+	github.com/moby/patternmatcher v0.6.0
 	github.com/moby/term v0.5.0
 	github.com/regclient/regclient v0.6.0
 	github.com/spf13/cobra v1.8.0
@@ -27,7 +28,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
-	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/user v0.1.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect

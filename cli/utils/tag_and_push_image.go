@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/docker/docker/api/types"
@@ -11,17 +10,19 @@ import (
 	"github.com/moby/term"
 )
 
+// TagAndPushImage Tags and pushes a Docker image to a registry.
+// It will print updates to the console and wait for the stream to complete or fail.
 func TagAndPushImage(fromImage string, toImage string, dockerClient *client.Client, pushOptions types.ImagePushOptions) error {
 
 	tagErr := dockerClient.ImageTag(context.Background(), fromImage, toImage)
 	if tagErr != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to tag the image from %s to %s\n", fromImage, toImage)
+		LogError("An error ocurred when trying to tag the image from %s to %s\n", fromImage, toImage)
 		return tagErr
 	}
 
 	reader, pushError := dockerClient.ImagePush(context.Background(), toImage, pushOptions)
 	if pushError != nil {
-		fmt.Printf("ERROR: An error ocurred when trying to push the image: %s\n", toImage)
+		LogError("An error ocurred when trying to push the image: %s\n", toImage)
 		return pushError
 	}
 	termFd, isTerm := term.GetFdInfo(os.Stderr)
