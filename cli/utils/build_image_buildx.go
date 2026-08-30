@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/moby/term"
@@ -131,10 +132,23 @@ func BuildImageBuildx(params BuildDockerImageParams, imageHash string, targetTag
 // it emits the same per-branch log line TagAndPushNewImages emits for each
 // target tag (via LogInfo/LogWarn) and appends every target tag's fully
 // qualified image name to buildLog.outputTags, in ResolveTargetTags order.
-// Both of those are depended on elsewhere (see BuildImageBuildx's doc comment),
+// It also records buildLog.customDockerfile for an out-of-context Dockerfile,
+// which is the one piece of BuildLog bookkeeping the classic path performs
+// inside TarBuildContext - a function this path deliberately never calls.
+// All three are depended on elsewhere (see BuildImageBuildx's doc comment),
 // so preserve them if you touch this function.
 func assembleBuildxArgs(params BuildDockerImageParams, hashImageName string, targetTags []ResolvedTag, buildLog *BuildLog) []string {
 	args := []string{"buildx", "build", "--file", params.DockerfilePath}
+
+	// Record the out-of-context Dockerfile on BuildLog. buildx needs no
+	// workaround for one - the real path goes straight to --file above, which
+	// is why TarBuildContext, where the classic path sets this flag, is never
+	// reached here. The flag still has to be set: BuildLog is how the e2e tests
+	// observe which branch ran, so leaving it unset on this path makes the two
+	// builders report differently about an identical build.
+	if dockerfileOutsideContext(params.Directory, params.DockerfilePath) {
+		buildLog.customDockerfile = true
+	}
 
 	// --platform is omitted entirely when unset, so a single-platform buildx
 	// build behaves as buildx's default (the host platform).
@@ -215,4 +229,36 @@ func describePlatforms(platforms []string) string {
 		return "the host platform"
 	}
 	return strings.Join(platforms, ", ")
+}
+
+// dockerfileOutsideContext reports whether dockerfilePath resolves outside the
+// build context at directory, which is the condition the classic path detects
+// in TarBuildContext (there, to copy the Dockerfile into the context before
+// tarring it; here, only to record it on BuildLog).
+//
+// It applies the same rule TarBuildContext does - the Dockerfile's path
+// relative to the context escapes upwards - but tests it against the platform's
+// own separator rather than a literal "../", so it holds on Windows too.
+//
+// A path that cannot be resolved is reported as inside the context: this
+// function only feeds a BuildLog field, so it must never be the thing that
+// fails a build. An unresolvable path will surface a real error from buildx
+// itself moments later, with a far better message than anything derivable here.
+func dockerfileOutsideContext(directory, dockerfilePath string) bool {
+	absDirectory, directoryErr := filepath.Abs(directory)
+	if directoryErr != nil {
+		return false
+	}
+
+	absDockerfile, dockerfileErr := filepath.Abs(dockerfilePath)
+	if dockerfileErr != nil {
+		return false
+	}
+
+	relative, relativeErr := filepath.Rel(absDirectory, absDockerfile)
+	if relativeErr != nil {
+		return false
+	}
+
+	return relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
