@@ -21,7 +21,7 @@ actually execute (ie. excluding everything in `build_docker_image_test.go` that
 
 | Package | Coverage |
 |---|---|
-| `dockem/utils` | 34.7% |
+| `dockem/utils` | 38.2% |
 | `dockem/cmd` | 0.0% |
 | `dockem` | 0.0% |
 
@@ -39,6 +39,9 @@ Two existing patterns are the ones to clone rather than invent alternatives to:
 - **`build_docker_image_cache_hash_test.go`** — a source-reading guard test that fails
   if the `overallHash` span ever mentions a flag it must not. The right tool for
   invariants that no runtime assertion can reach.
+- **`temp_docker_config_test.go`** — real filesystem work against a temp `DOCKER_CONFIG`
+  tree, asserting both what is written and what is left intact on cleanup. The pattern
+  Phase T4's auth tests should reuse.
 
 ---
 
