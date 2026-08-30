@@ -3,6 +3,8 @@ package utils
 import (
 	"encoding/base64"
 	"encoding/json"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -52,6 +54,18 @@ const dockerHubConfigKey = "https://index.docker.io/v1/"
 // The password is written only into the 0600 config.json inside the 0700
 // directory. It is never logged, never placed on BuildLog, and never surfaced
 // in the BuildResult JSON.
+//
+// The directory is NOT only a credential store. DOCKER_CONFIG is also where
+// buildx keeps its builder instances and its record of which builder is
+// currently selected (in the "buildx" subdirectory), so a directory holding
+// nothing but a config.json hides every builder the user has configured.
+// buildx does not fail on that - it silently falls back to the "default"
+// docker-driver instance, which cannot build multi-platform images, so an
+// otherwise correct `--platform linux/amd64,linux/arm64` build dies with
+// "Multi-platform build is not supported for the docker driver" purely because
+// credentials were passed. carryBuildxState therefore reproduces that
+// subdirectory in the throwaway directory: credentials stay isolated, builder
+// selection survives.
 func TempDockerConfig(registry, username, password string) (string, func(), error) {
 	noop := func() {}
 
@@ -104,5 +118,125 @@ func TempDockerConfig(registry, username, password string) (string, func(), erro
 		return "", noop, writeErr
 	}
 
+	// Carry the buildx builder state across. A failure here is not fatal: the
+	// build can still run on buildx's "default" instance, which is correct for
+	// every single-platform build. Warn rather than abort so passing
+	// credentials never turns a working build into a failed one.
+	if carryErr := carryBuildxState(dir); carryErr != nil {
+		LogWarn("Unable to carry your buildx builder configuration into the temporary docker config (%v). The build will fall back to the 'default' buildx instance, which cannot build multi-platform images. If you are building for more than one --platform, either drop --docker-username/--docker-password and use an existing 'docker login', or set BUILDX_BUILDER to the builder you want.\n", carryErr)
+	}
+
 	return dir, cleanup, nil
+}
+
+// sourceDockerConfigDir returns the docker config directory the buildx
+// subprocess would have read had dockem not overridden DOCKER_CONFIG for it -
+// i.e. dockem's own inherited DOCKER_CONFIG when set, and ~/.docker otherwise,
+// which is the same resolution order the docker CLI itself uses. An empty
+// return means there is no directory to read from, and the caller skips.
+func sourceDockerConfigDir() string {
+	if fromEnv := os.Getenv("DOCKER_CONFIG"); fromEnv != "" {
+		return fromEnv
+	}
+
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		return ""
+	}
+
+	return filepath.Join(home, ".docker")
+}
+
+// carryBuildxState reproduces the "buildx" subdirectory of the real docker
+// config directory inside the throwaway one at dir, so that the subprocess sees
+// the builders the user actually has (and the one they have selected) rather
+// than an empty config that silently degrades to the "default" docker driver.
+// See TempDockerConfig's doc comment for why that matters.
+//
+// A symlink is preferred: it is a single syscall, it costs nothing, and buildx
+// keeps reading and WRITING the real state directory exactly as it would in a
+// normal build. Cleanup is safe with it, because os.RemoveAll unlinks a symlink
+// rather than following it into the real directory - a property
+// TestTempDockerConfigCleanupLeavesRealBuildxStateIntact pins down, since
+// getting it wrong would delete the user's builder configuration.
+//
+// Windows only permits symlink creation with Developer Mode or elevation, so a
+// recursive copy is the fallback. The copy is read-only as far as the real
+// state is concerned: buildx's writes land in the throwaway directory and are
+// discarded with it, which loses nothing dockem is responsible for.
+//
+// Having no buildx directory at all is not an error - it means no builders are
+// configured, and buildx's own "default" is then the correct instance to use.
+func carryBuildxState(dir string) error {
+	source := sourceDockerConfigDir()
+	if source == "" {
+		return nil
+	}
+
+	buildxDir := filepath.Join(source, "buildx")
+	info, statErr := os.Stat(buildxDir)
+	if statErr != nil || !info.IsDir() {
+		return nil
+	}
+
+	target := filepath.Join(dir, "buildx")
+	if symlinkErr := os.Symlink(buildxDir, target); symlinkErr == nil {
+		return nil
+	}
+
+	return copyDirectory(buildxDir, target)
+}
+
+// copyDirectory recursively copies the tree at source to target, creating
+// target and any directories beneath it 0700 and any files 0600 - the same
+// permissions the rest of the throwaway config directory uses, since the tree
+// is being copied into it. Symlinks and other irregular entries inside the
+// source are skipped rather than followed: buildx's state is plain JSON, and
+// following links out of the tree is exactly the behaviour this copy exists to
+// avoid.
+func copyDirectory(source, target string) error {
+	return filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+
+		relative, relErr := filepath.Rel(source, path)
+		if relErr != nil {
+			return relErr
+		}
+
+		destination := filepath.Join(target, relative)
+
+		if entry.IsDir() {
+			return os.MkdirAll(destination, 0o700)
+		}
+
+		// Skip anything that is not a regular file (symlinks, sockets, devices).
+		if !entry.Type().IsRegular() {
+			return nil
+		}
+
+		return copyFile(path, destination)
+	})
+}
+
+// copyFile copies a single regular file to destination with 0600 permissions.
+func copyFile(source, destination string) error {
+	in, openErr := os.Open(source)
+	if openErr != nil {
+		return openErr
+	}
+	defer in.Close()
+
+	out, createErr := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if createErr != nil {
+		return createErr
+	}
+	defer out.Close()
+
+	if _, copyErr := io.Copy(out, in); copyErr != nil {
+		return copyErr
+	}
+
+	return out.Close()
 }

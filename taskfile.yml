@@ -31,13 +31,19 @@ tasks:
 
   release:
     desc: "Run a standard release from develop to main using git flow"
+    preconditions:
+      - sh: command -v brrelease
+        msg: "brrelease is not installed. Install it with: brew install kerren/brrelease-tap/brrelease"
     cmds:
-      - npx --yes entro-version release --main-branch-name=main
+      - brrelease release --merge-into-branch=main --auto-push
 
   release-major:
     desc: "Run a major release from develop to main using git flow"
+    preconditions:
+      - sh: command -v brrelease
+        msg: "brrelease is not installed. Install it with: brew install kerren/brrelease-tap/brrelease"
     cmds:
-      - npx --yes entro-version release --main-branch-name=main --commit-and-tag-version-flag="--release-as=major"
+      - brrelease release --merge-into-branch=main --release-as=major --auto-push
 
   build:
     desc: "Build the binary - the assumption is that this is done from the main branch"
