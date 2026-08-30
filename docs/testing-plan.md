@@ -7,6 +7,11 @@ cheapest way to move the coverage number.
 
 **Status legend:** `[ ]` not started · `[~]` in progress · `[x]` done
 
+**Progress:** T0, T2 and T3 are complete (one T0 item needs a real CI run to close).
+T1, T4, T5 and T6 remain — each depends on a production refactor listed under
+[Refactors this plan depends on](#refactors-this-plan-depends-on), which is why they
+were not done alongside the rest.
+
 > **Location note.** This plan lives in `docs/`, not at the repository root. A CI
 > guard (Phase T0) asserts that no `plan.md` exists in the root — see that phase for
 > the rationale.
@@ -21,8 +26,8 @@ actually execute (ie. excluding everything in `build_docker_image_test.go` that
 
 | Package | Coverage |
 |---|---|
-| `dockem/utils` | 38.2% |
-| `dockem/cmd` | 0.0% |
+| `dockem/utils` | 52.6% |
+| `dockem/cmd` | 33.8% |
 | `dockem` | 0.0% |
 
 Functions at zero coverage: `ExtractVersion`, `ParseVersionFileJson`,
@@ -47,27 +52,27 @@ Two existing patterns are the ones to clone rather than invent alternatives to:
 
 ## Phase T0 — Repo hygiene and CI guards
 
-- [ ] Add a GitHub Action that asserts **no `plan.md` exists in the root of the
+- [x] Add a GitHub Action that asserts **no `plan.md` exists in the root of the
       repository**. Planning documents belong in `docs/`; a stray root `plan.md` is
       scratch state that should never reach `develop` or `main`. The check must be
       case-insensitive (`plan.md`, `PLAN.md`, `Plan.md`) and must fail the build with
       a message pointing at `docs/` as the correct home.
-- [ ] Wire it into the existing `.github/workflows/testing.yaml`, or a small separate
+- [x] Wire it into the existing `.github/workflows/testing.yaml`, or a small separate
       `lint`/`hygiene` workflow, running on the same `push` / `pull_request` triggers
       for `main` and `develop`.
-- [ ] Make it a shell step that is obvious to read and cheap to run, eg. a
+- [x] Make it a shell step that is obvious to read and cheap to run, eg. a
       `find . -maxdepth 1 -iname 'plan.md'` that exits non-zero on any hit.
 - [ ] Confirm the guard actually fails when a root `plan.md` is present — commit one
       on a scratch branch, watch the check go red, then remove it. A guard that has
       never been seen to fail is not a guard.
-- [ ] Remove the existing root `PLAN.md` (its v2.6.0 / v3.0.0 phases have landed) so
+- [x] Remove the existing root `PLAN.md` (its v2.6.0 / v3.0.0 phases have landed) so
       the guard passes on `develop` the moment it is added.
-- [ ] Add a stdout-purity guard in the same spirit: with `--output-format=json`,
+- [x] Add a stdout-purity guard in the same spirit: with `--output-format=json`,
       stdout must carry nothing but JSON. A source-level test asserting no
       `fmt.Print*` / direct `os.Stdout` write exists outside `write_build_output.go`
       enforces the `LogInfo` / `LogWarn` / `LogError` convention in `CLAUDE.md`
       directly, rather than by review.
-- [ ] Add a test asserting every flag registered in `cli/cmd/build.go` appears in
+- [x] Add a test asserting every flag registered in `cli/cmd/build.go` appears in
       `README.md`, mechanically enforcing the documented "update the README alongside
       any flag change" convention.
 
@@ -141,53 +146,53 @@ these need a refactor.
 
 ### T2.1 Version handling
 
-- [ ] `ParseVersionFileJson`: valid JSON, malformed JSON, non-string `version` value.
-- [ ] `ExtractVersion`: valid file, missing file, unreadable file.
-- [ ] Decide and then pin the two edges that currently produce tags silently:
+- [x] `ParseVersionFileJson`: valid JSON, malformed JSON, non-string `version` value.
+- [x] `ExtractVersion`: valid file, missing file, unreadable file.
+- [x] Decide and then pin the two edges that currently produce tags silently:
       `{}` yields the version string `"v"`, and `{"version": "v1.0.0"}` yields
       `"vv1.0.0"`. Either is a plausible tag name, so neither fails loudly today.
 
 ### T2.2 Hashing helpers
 
-- [ ] `HashWatchFiles`: empty list returns `""` — the same "contributes nothing"
+- [x] `HashWatchFiles`: empty list returns `""` — the same "contributes nothing"
       contract `hashPlatforms` has, and equally load-bearing for the cache identity of
       users who never adopt the flag.
-- [ ] `HashWatchFiles`: order invariance, missing file errors, content change changes
+- [x] `HashWatchFiles`: order invariance, missing file errors, content change changes
       the hash.
-- [ ] `HashWatchDirectories`: empty list returns `""`; sort invariance; multiple
+- [x] `HashWatchDirectories`: empty list returns `""`; sort invariance; multiple
       directories concatenate; missing directory errors.
-- [ ] `HashWatchDirectories`: `excludePatterns` are applied consistently with
+- [x] `HashWatchDirectories`: `excludePatterns` are applied consistently with
       `HashDirectory`.
-- [ ] `HashWatchDirectories` calls `sort.Strings` on the caller's slice, mutating
+- [x] `HashWatchDirectories` calls `sort.Strings` on the caller's slice, mutating
       `params.WatchDirectory` in place. Either pin that as intended or fix it and test
       that the caller's slice is left untouched.
-- [ ] `HashString`: a known SHA256 vector, determinism across calls, empty input.
+- [x] `HashString`: a known SHA256 vector, determinism across calls, empty input.
 
 ### T2.3 `ReadDockerignore`
 
-- [ ] A missing ignore file is not an error and contributes no patterns.
-- [ ] Comments and blank lines are stripped (via `ignorefile.ReadAll`).
-- [ ] `--ignore-file` overrides `<directory>/.dockerignore`.
-- [ ] An unreadable file (mode `000`) surfaces an error.
-- [ ] `--exclude` patterns land **after** the file's patterns, so a
+- [x] A missing ignore file is not an error and contributes no patterns.
+- [x] Comments and blank lines are stripped (via `ignorefile.ReadAll`).
+- [x] `--ignore-file` overrides `<directory>/.dockerignore`.
+- [x] An unreadable file (mode `000`) surfaces an error.
+- [x] `--exclude` patterns land **after** the file's patterns, so a
       `--exclude '!keep-me'` can re-include something the file excluded. That ordering
       is a real behavioural contract and is currently only implied by the code.
 
 ### T2.4 Buildx detection
 
-- [ ] `parseBuildxVersion`: normal `github.com/docker/buildx v0.36.1 <sha>` output; no
+- [x] `parseBuildxVersion`: normal `github.com/docker/buildx v0.36.1 <sha>` output; no
       version-looking token (returns the trimmed output); empty output; a suffixed
       version such as `v0.36.1-desktop.1`.
-- [ ] `DetectBuildx` via `t.Setenv("PATH", tmpdir)` and a fake `docker` shim: exits 0
+- [x] `DetectBuildx` via `t.Setenv("PATH", tmpdir)` and a fake `docker` shim: exits 0
       with known output, exits non-zero, and is absent from `PATH` entirely.
-- [ ] Pin the contract that every failure mode returns `(false, "", nil)` and never an
+- [x] Pin the contract that every failure mode returns `(false, "", nil)` and never an
       error — `ResolveBuilder`, not `DetectBuildx`, decides when that is fatal.
 
 ### T2.5 Small helpers
 
-- [ ] `GenerateDockerImageName`: empty registry omits the host prefix; a set registry
+- [x] `GenerateDockerImageName`: empty registry omits the host prefix; a set registry
       includes it; an image name that already contains a slash.
-- [ ] `RemoveEmptyStringsFromArray`: order preserved; returns `nil` rather than an
+- [x] `RemoveEmptyStringsFromArray`: order preserved; returns `nil` rather than an
       empty slice for all-empty input; whitespace-only strings are **not** removed, so
       `--tag " "` currently survives into a tag name.
 
@@ -200,26 +205,26 @@ where every rule in the "Subprocess credentials (buildx)" section of `CLAUDE.md`
 actually lives. A single test with a fake `docker` on `PATH` — a shell script that
 dumps its argv, environment and cwd to a file — covers nearly all of it.
 
-- [ ] argv matches what `assembleBuildxArgs` produced.
-- [ ] `DOCKER_CONFIG` reaches the child pointing at the temp config dir.
-- [ ] `os.Getenv("DOCKER_CONFIG")` in the parent test process is **unchanged** — it
+- [x] argv matches what `assembleBuildxArgs` produced.
+- [x] `DOCKER_CONFIG` reaches the child pointing at the temp config dir.
+- [x] `os.Getenv("DOCKER_CONFIG")` in the parent test process is **unchanged** — it
       must be set on `cmd.Env` only, never on dockem's own environment.
-- [ ] An arbitrary `FOO=bar` from the parent environment reaches the child. Narrowing
+- [x] An arbitrary `FOO=bar` from the parent environment reaches the child. Narrowing
       `cmd.Env` to an allowlist would silently break `--secret id=x,env=VAR`, so this
       guards a real regression.
-- [ ] The child's cwd equals dockem's cwd (`cmd.Dir` is never set), so a relative
+- [x] The child's cwd equals dockem's cwd (`cmd.Dir` is never set), so a relative
       `src=` path in a `--secret` resolves against dockem's cwd as documented.
-- [ ] With no credentials, `cmd.Env` is nil and the environment passes through
+- [x] With no credentials, `cmd.Env` is nil and the environment passes through
       untouched, so an existing `docker login` keeps working.
-- [ ] Any pre-existing `DOCKER_CONFIG` in the parent environment is stripped rather
+- [x] Any pre-existing `DOCKER_CONFIG` in the parent environment is stripped rather
       than duplicated when dockem sets its own.
-- [ ] The temp config dir is removed after return — including on a non-zero exit from
+- [x] The temp config dir is removed after return — including on a non-zero exit from
       the subprocess.
-- [ ] A non-zero exit surfaces as an error from `BuildImageBuildx`.
-- [ ] Subprocess output goes to stderr, not stdout, keeping stdout clean for
+- [x] A non-zero exit surfaces as an error from `BuildImageBuildx`.
+- [x] Subprocess output goes to stderr, not stdout, keeping stdout clean for
       `--output-format=json`.
-- [ ] The password never appears in argv, in `BuildLog`, or in the JSON result.
-- [ ] `describePlatforms`: unset, single, and multiple platform lists.
+- [x] The password never appears in argv, in `BuildLog`, or in the JSON result.
+- [x] `describePlatforms`: unset, single, and multiple platform lists.
 
 ---
 

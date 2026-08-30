@@ -1,0 +1,28 @@
+name: "Repo Hygiene"
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: No plan.md in repo root
+        run: |
+          # Planning documents belong in docs/ (see docs/testing-plan.md), not
+          # the repo root. -maxdepth 1 keeps this root-only, so nested docs
+          # like docs/testing-plan.md never trip it. -iname is case-insensitive,
+          # so plan.md / PLAN.md / Plan.md are all caught.
+          if find . -maxdepth 1 -iname 'plan.md' | grep -q .; then
+            echo "ERROR: found a plan.md in the repository root. Planning documents belong in docs/ - move it there (eg. docs/plan.md) instead of the repo root."
+            exit 1
+          fi
