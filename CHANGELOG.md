@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [3.1.0](https://github.com/kerren/dockem/compare/v3.0.0...v3.1.0) (2026-08-30)
+
+
+### Features
+
+* **testing:** Add comprehensive test coverage for utils and cmd packages ([ea4a623](https://github.com/kerren/dockem/commit/ea4a623d5d7d00cff08aef773c182fef8d1881b0)), closes [#32](https://github.com/kerren/dockem/issues/32)
+
 ## [3.0.0](https://github.com/kerren/dockem/compare/v2.5.0...v3.0.0) (2026-08-30)
 
 
